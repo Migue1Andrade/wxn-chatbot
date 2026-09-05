@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: wxn-chatbot
+  datasource:
+    url: ${POSTGRES_URL}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:${MONGO_PORT:27017}/${MONGO_DB}}

@@ -1,0 +1,24 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Defina POSTGRES_DB no ambiente ou em um arquivo .env local}
+      POSTGRES_USER: ${POSTGRES_USER:?Defina POSTGRES_USER no ambiente ou em um arquivo .env local}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no ambiente ou em um arquivo .env local}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  mongodb:
+    image: mongo:8
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGO_DB:?Defina MONGO_DB no ambiente ou em um arquivo .env local}
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  postgres_data:
+  mongo_data:
