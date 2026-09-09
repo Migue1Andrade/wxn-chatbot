@@ -159,3 +159,12 @@ O ambiente local está preparado para ser reproduzido com Docker Compose. O back
 
 PostgreSQL e MongoDB são dependências externas, e as configurações são fornecidas por variáveis de ambiente. O projeto está preparado para uma futura hospedagem em cloud, mas ainda não há provedor cloud definido nesta etapa.
 
+## Equipe
+- João Pedro dos Santos Sousa - `jpss2@cesar.school`
+- Luis Filipe Alves Silva Santos - `lfass@cesar.school`
+- Lucas Samuel Pereira Alves - `lspa@cesar.school`
+- Matheus Costa da Rocha -`mcr@cesar.school`
+- Miguel josé França de Andrade - `mjfa@cesar.school `
+- Pedro Henrique Ramos da Silva - `phrs@cesar.school`
+- Vitória Gabrielle Janeiro Duran - `vgjda2@cesar.school`
+
