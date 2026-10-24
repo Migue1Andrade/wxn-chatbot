@@ -3,3 +3,7 @@ target/
 .env
 AGENTS.md
 *.log
+
+node_modules/
+frontend/dist/
+frontend/.env.local

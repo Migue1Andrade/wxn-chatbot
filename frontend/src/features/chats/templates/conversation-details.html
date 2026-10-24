@@ -1,0 +1,37 @@
+<dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-5 gap-y-3 text-sm">
+  <dt class="text-slate-400">Contato</dt>
+  <dd class="break-words text-slate-700">
+    {{$details.conversation.displayName || $details.conversation.contactPhone || 'Não informado'}}
+  </dd>
+  <dt class="text-slate-400">Telefone</dt>
+  <dd class="text-slate-700">{{$details.conversation.contactPhone || 'Não informado'}}</dd>
+  <dt class="text-slate-400">Conversa</dt>
+  <dd class="break-all text-xs text-slate-500">{{$details.conversation.id}}</dd>
+  <dt class="text-slate-400">Canal</dt>
+  <dd class="text-slate-700">{{$details.channel.name || 'Não disponível'}}</dd>
+  <dt class="text-slate-400">Provedor</dt>
+  <dd class="text-slate-700">{{$details.conversation.provider || 'Histórico legado'}}</dd>
+  <dt class="text-slate-400">Tipo</dt>
+  <dd class="text-slate-700">{{$details.conversation.conversationType || 'Não informado'}}</dd>
+  <dt class="text-slate-400">Status</dt>
+  <dd class="text-slate-700">
+    {{$details.conversation.status === 'CLOSED' ? 'Finalizado' : ($details.conversation.status ===
+    'IN_PROGRESS' ? 'Em atendimento' : 'Pendente')}}
+  </dd>
+  <dt class="text-slate-400">Responsável</dt>
+  <dd class="text-slate-700">{{$details.responsible}}</dd>
+  <dt class="text-slate-400">Criada</dt>
+  <dd class="text-slate-700">{{$details.conversation.createdAt | date:'dd/MM/yyyy HH:mm'}}</dd>
+  <dt class="text-slate-400">Atualizada</dt>
+  <dd class="text-slate-700">{{$details.conversation.updatedAt | date:'dd/MM/yyyy HH:mm'}}</dd>
+  <dt class="text-slate-400">Última mensagem</dt>
+  <dd class="text-slate-700">{{$details.conversation.lastMessageAt | date:'dd/MM/yyyy HH:mm'}}</dd>
+  <dt ng-if="$details.conversation.closedAt" class="text-slate-400">Encerrada</dt>
+  <dd ng-if="$details.conversation.closedAt" class="text-slate-700">
+    {{$details.conversation.closedAt | date:'dd/MM/yyyy HH:mm'}}
+  </dd>
+  <dt ng-if="$details.conversation.externalChatId" class="text-slate-400">ID externo</dt>
+  <dd ng-if="$details.conversation.externalChatId" class="break-all text-xs text-slate-500">
+    {{$details.conversation.externalChatId}}
+  </dd>
+</dl>

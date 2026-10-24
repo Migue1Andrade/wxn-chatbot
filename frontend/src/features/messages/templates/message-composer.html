@@ -1,0 +1,48 @@
+<footer class="shrink-0 border-t border-slate-200 bg-white px-4 py-4 md:px-8">
+  <p ng-if="$ctrl.blocked" class="mb-2 text-xs text-amber-700" role="status">
+    {{$ctrl.reason || 'Selecione um atendente para responder.'}}
+  </p>
+  <form ng-submit="$ctrl.submit()" class="flex items-end gap-3">
+    <label class="min-w-0 flex-1">
+      <span class="sr-only">Mensagem</span>
+      <textarea
+        ng-model="$ctrl.text"
+        ng-keydown="$ctrl.keydown($event)"
+        ng-disabled="$ctrl.blocked || $ctrl.sending"
+        rows="2"
+        maxlength="1600"
+        placeholder="Escreva uma mensagem…"
+        aria-label="Mensagem"
+        class="max-h-36 min-h-12 w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100 disabled:opacity-50"
+      ></textarea>
+    </label>
+    <button
+      type="submit"
+      ng-disabled="$ctrl.blocked || $ctrl.sending || !$ctrl.text.trim()"
+      aria-label="Enviar mensagem"
+      class="mb-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-teal-700 text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      <svg
+        ng-if="!$ctrl.sending"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        aria-hidden="true"
+      >
+        <path d="m22 2-7 20-4-9-9-4 20-7Z" />
+        <path d="M22 2 11 13" />
+      </svg>
+      <span
+        ng-if="$ctrl.sending"
+        class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+      ></span>
+    </button>
+  </form>
+  <div class="mt-2 flex justify-between text-[10px] text-slate-400">
+    <span>{{$ctrl.memberName ? 'Respondendo como ' + $ctrl.memberName : 'Atendimento WXN'}}</span>
+    <span class="hidden sm:block">Enter para enviar · Shift + Enter para nova linha</span>
+  </div>
+</footer>

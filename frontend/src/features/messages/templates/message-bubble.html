@@ -1,0 +1,36 @@
+<div
+  class="mb-3 flex"
+  ng-class="{'justify-end': $ctrl.message.direction === 'OUTBOUND', 'justify-start': $ctrl.message.direction !== 'OUTBOUND'}"
+>
+  <article
+    class="min-w-24 max-w-[90%] rounded-2xl border px-4 py-2.5 shadow-sm sm:max-w-[75%] lg:max-w-[65%]"
+    ng-class="{'bg-teal-50 border-teal-200/70 rounded-tr-sm': $ctrl.message.direction === 'OUTBOUND', 'bg-white border-slate-200/80 rounded-tl-sm': $ctrl.message.direction !== 'OUTBOUND'}"
+  >
+    <p
+      ng-if="$ctrl.message.direction === 'OUTBOUND' && $ctrl.message.memberId"
+      class="mb-1 text-[10px] font-semibold text-teal-700"
+    >
+      {{$ctrl.memberName}}
+    </p>
+    <p
+      class="whitespace-pre-wrap [overflow-wrap:anywhere] text-sm leading-relaxed text-slate-800"
+      ng-bind="$ctrl.message.content.text || ($ctrl.message.messageType === 'MEDIA' ? 'Anexo recebido' : '')"
+    ></p>
+    <div class="mt-1.5 flex flex-wrap items-center justify-end gap-2 text-[10px] text-slate-500">
+      <span
+        ng-if="$ctrl.message.simulated && $ctrl.message.direction !== 'OUTBOUND'"
+        class="rounded bg-slate-100 px-1.5 py-0.5 text-slate-500"
+      >
+        Mock
+      </span>
+      <time>{{$ctrl.message.createdAt | date:'HH:mm'}}</time>
+      <span
+        ng-if="$ctrl.message.direction === 'OUTBOUND'"
+        ng-class="{'text-red-600': $ctrl.message.status === 'FAILED', 'text-teal-700': $ctrl.message.status === 'READ'}"
+        title="{{$ctrl.message.errorCode || ''}}"
+      >
+        {{$ctrl.statusLabel()}}
+      </span>
+    </div>
+  </article>
+</div>

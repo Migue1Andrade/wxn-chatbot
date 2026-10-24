@@ -1,3 +1,1 @@
-export const appConfig = {
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
-};
+export { environment as appConfig } from '../core/config/environment.js';

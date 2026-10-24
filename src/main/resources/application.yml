@@ -1,8 +1,11 @@
+server:
+  port: ${BACKEND_PORT:4001}
+
 spring:
   application:
     name: wxn-chatbot
   datasource:
-    url: ${POSTGRES_URL}
+    url: ${POSTGRES_URL:jdbc:postgresql://localhost:${POSTGRES_PORT:4003}/${POSTGRES_DB}}
     username: ${POSTGRES_USER}
     password: ${POSTGRES_PASSWORD}
   jpa:
@@ -13,4 +16,18 @@ spring:
     enabled: true
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:${MONGO_PORT:27017}/${MONGO_DB}}
+      uri: ${MONGODB_URI:mongodb://localhost:${MONGO_PORT:4004}/${MONGO_DB}}
+
+wxn:
+  dev:
+    api-key: ${DEV_API_KEY:}
+    company-id: ${DEV_COMPANY_ID:1}
+    frontend-origin: ${FRONTEND_ORIGIN:http://localhost:4002}
+  twilio:
+    company-id: ${TWILIO_COMPANY_ID:0}
+    channel-id: ${TWILIO_CHANNEL_ID:0}
+    channel-key: ${TWILIO_CHANNEL_KEY:}
+    account-sid: ${TWILIO_ACCOUNT_SID:}
+    auth-token: ${TWILIO_AUTH_TOKEN:}
+    phone-number: ${TWILIO_PHONE_NUMBER:}
+    public-base-url: ${TWILIO_PUBLIC_BASE_URL:}

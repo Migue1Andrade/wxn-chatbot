@@ -10,7 +10,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-
 import java.time.OffsetDateTime;
 
 @Entity
@@ -38,6 +37,43 @@ public class User {
     @Column(name = "deleted_at")
     private OffsetDateTime deletedAt;
 
-    protected User() {
+    @Column(name = "phone", length = 20)
+    private String phone;
+
+    protected User() {}
+
+    public User(Company company, String name, String phone) {
+        this.company = company;
+        this.name = name;
+        this.phone = phone;
+        this.createdAt = this.updatedAt = OffsetDateTime.now();
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public Company getCompany() {
+        return company;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public OffsetDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public OffsetDateTime getDeletedAt() {
+        return deletedAt;
     }
 }

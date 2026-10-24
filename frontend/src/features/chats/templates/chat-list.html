@@ -1,0 +1,16 @@
+<ul class="px-2 py-2" aria-label="Lista de conversas">
+  <li ng-repeat="conversation in $ctrl.items track by conversation.id">
+    <chat-list-item
+      conversation="conversation"
+      selected="conversation.id === $ctrl.selectedId"
+      unread="$ctrl.unread[conversation.id]"
+      member-name="{{$ctrl.memberName({id: conversation.assignedMemberId})}}"
+      on-select="$ctrl.onSelect({conversation: conversation})"
+    ></chat-list-item>
+  </li>
+</ul>
+<empty-state
+  ng-if="!$ctrl.items.length && !$ctrl.loading && !$ctrl.error"
+  title="{{$ctrl.query ? 'Nenhuma conversa encontrada' : 'Nenhuma conversa ainda'}}"
+  description="{{$ctrl.query ? 'Tente buscar por outro número.' : 'As mensagens recebidas aparecerão aqui.'}}"
+></empty-state>

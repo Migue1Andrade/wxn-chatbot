@@ -6,7 +6,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-
 import java.time.OffsetDateTime;
 
 @Entity
@@ -30,6 +29,30 @@ public class Company {
     @Column(name = "deleted_at")
     private OffsetDateTime deletedAt;
 
-    protected Company() {
+    protected Company() {}
+
+    public Company(String name) {
+        this.name = name;
+        this.createdAt = this.updatedAt = OffsetDateTime.now();
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public OffsetDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public OffsetDateTime getDeletedAt() {
+        return deletedAt;
     }
 }

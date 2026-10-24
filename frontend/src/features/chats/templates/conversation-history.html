@@ -1,0 +1,21 @@
+<loading-state ng-if="$history.loading" label="Carregando histórico de atendimento"></loading-state>
+<div ng-if="$history.error" role="alert" class="rounded-xl bg-red-50 p-3 text-sm text-red-700">
+  {{$history.error}}
+  <button type="button" ng-click="$history.onRetry()" class="mt-2 block font-medium underline">
+    Tentar novamente
+  </button>
+</div>
+<empty-state
+  ng-if="!$history.loading && !$history.error && !$history.events.length"
+  title="Nenhum evento registrado"
+  description="As alterações de atendimento aparecerão aqui."
+></empty-state>
+<ol ng-if="!$history.loading" class="space-y-4">
+  <li ng-repeat="event in $history.events track by event.id" class="border-l-2 border-teal-100 pl-4">
+    <p class="text-sm text-slate-700">{{$history.label(event)}}</p>
+    <p ng-if="event.reason" class="mt-1 text-xs text-slate-500">{{event.reason}}</p>
+    <time class="mt-1 block text-[10px] text-slate-400">
+      {{event.createdAt | date:'dd/MM/yyyy HH:mm:ss'}}
+    </time>
+  </li>
+</ol>

@@ -1,0 +1,159 @@
+<header class="shrink-0 border-b border-slate-200 bg-white px-5 py-4 md:px-8">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div class="flex min-w-0 items-center gap-3">
+      <button
+        type="button"
+        class="rounded-lg p-2 text-slate-500 md:hidden"
+        ng-click="$ctrl.onBack()"
+        aria-label="Voltar às conversas"
+      >
+        ←
+      </button>
+      <span
+        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-teal-100 text-sm font-semibold text-teal-800"
+      >
+        {{$ctrl.conversation.contactPhone ? $ctrl.conversation.contactPhone.slice(-2) : 'CT'}}
+      </span>
+      <div class="min-w-0">
+        <h2 class="truncate text-sm font-semibold">
+          {{$ctrl.conversation.displayName || $ctrl.conversation.contactPhone || 'Conversa antiga'}}
+        </h2>
+        <p class="mt-1 text-xs text-slate-400">
+          {{$ctrl.channelName}} · {{$ctrl.responsibleName()}} · {{$ctrl.conversation.status === 'CLOSED' ?
+          'Finalizado' : ($ctrl.conversation.status === 'IN_PROGRESS' ? 'Em atendimento' : 'Pendente')}}
+        </p>
+      </div>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button
+        ng-if="$ctrl.conversation.status === 'PENDING'"
+        ng-disabled="$ctrl.operation.loading || !$ctrl.actor"
+        ng-click="$ctrl.open('assume')"
+        class="rounded-lg bg-teal-700 px-3 py-2 text-xs text-white disabled:opacity-40"
+      >
+        Assumir
+      </button>
+      <button
+        ng-if="$ctrl.conversation.status !== 'CLOSED'"
+        ng-disabled="$ctrl.operation.loading || !$ctrl.actor"
+        ng-click="$ctrl.open($ctrl.conversation.assignedMemberId ? 'transfer' : 'assign')"
+        class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-amber-600 disabled:opacity-40"
+      >
+        {{$ctrl.conversation.assignedMemberId ? 'Transferir' : 'Atribuir atendente'}}
+      </button>
+      <button
+        ng-if="$ctrl.conversation.status !== 'CLOSED'"
+        ng-disabled="$ctrl.operation.loading || !$ctrl.actor"
+        ng-click="$ctrl.open('close')"
+        class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-rose-600 disabled:opacity-40"
+      >
+        Encerrar
+      </button>
+      <button
+        ng-if="$ctrl.conversation.status === 'CLOSED'"
+        ng-disabled="$ctrl.operation.loading || !$ctrl.actor"
+        ng-click="$ctrl.open('reopen')"
+        class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800 transition-colors hover:bg-emerald-100 focus-visible:outline-2 focus-visible:outline-emerald-600 disabled:opacity-40"
+      >
+        Reabrir
+      </button>
+      <button
+        type="button"
+        ng-click="$ctrl.open('details')"
+        class="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-medium text-sky-700 transition-colors hover:bg-sky-100 focus-visible:outline-2 focus-visible:outline-sky-600"
+      >
+        Detalhes
+      </button>
+      <button
+        type="button"
+        ng-click="$ctrl.open('history')"
+        class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100"
+      >
+        Histórico
+      </button>
+    </div>
+  </div>
+  <p ng-if="$ctrl.success" class="mt-2 text-xs text-teal-700" role="status">{{$ctrl.success}}</p>
+  <app-modal
+    open="$ctrl.panel !== null"
+    title="{{$ctrl.panelTitle()}}"
+    busy="$ctrl.operation.loading"
+    on-close="$ctrl.closePanel()"
+  >
+    <conversation-details
+      ng-if="$ctrl.panel === 'details'"
+      conversation="$ctrl.conversation"
+      channel="$ctrl.channel()"
+      responsible="{{$ctrl.responsibleName()}}"
+    ></conversation-details>
+    <conversation-history
+      ng-if="$ctrl.panel === 'history'"
+      events="$ctrl.history"
+      loading="$ctrl.historyState.loading"
+      error="$ctrl.historyState.error"
+      member-name="$ctrl.memberName(id)"
+      on-retry="$ctrl.loadHistory()"
+    ></conversation-history>
+    <form
+      ng-if="$ctrl.panel !== 'history' && $ctrl.panel !== 'details'"
+      ng-submit="$ctrl.submit()"
+      class="space-y-4"
+    >
+      <p ng-if="$ctrl.panel === 'assume'" class="text-sm leading-6 text-slate-500">
+        Assumir esta conversa como
+        <strong class="text-slate-700">{{$ctrl.actor.name}}</strong>
+        ?
+      </p>
+      <p ng-if="$ctrl.panel === 'transfer'" class="text-sm text-slate-500">
+        Responsável atual:
+        <strong class="text-slate-700">{{$ctrl.responsibleName()}}</strong>
+      </p>
+      <member-picker
+        ng-if="$ctrl.isSelection()"
+        members="$ctrl.members"
+        selected="$ctrl.selection"
+        disabled="$ctrl.operation.loading"
+      ></member-picker>
+      <p ng-if="$ctrl.panel === 'close'" class="text-sm leading-6 text-slate-500">
+        Encerrar este atendimento? O envio ficará bloqueado até a reabertura. Uma nova mensagem do contato
+        reabre a conversa automaticamente.
+      </p>
+      <p ng-if="$ctrl.panel === 'reopen'" class="text-sm leading-6 text-slate-500">
+        Reabrir este atendimento? O responsável ativo será mantido; caso esteja indisponível, a conversa
+        voltará para pendente.
+      </p>
+      <label class="block text-xs font-medium text-slate-600">
+        Motivo (opcional)
+        <textarea
+          ng-model="$ctrl.reason"
+          ng-disabled="$ctrl.operation.loading"
+          maxlength="500"
+          rows="2"
+          aria-label="Motivo da alteração"
+          class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
+        ></textarea>
+      </label>
+      <p ng-if="$ctrl.operation.error" role="alert" class="rounded-xl bg-red-50 p-3 text-xs text-red-700">
+        {{$ctrl.operation.error}}
+      </p>
+      <div class="flex justify-end gap-2">
+        <button
+          type="button"
+          ng-click="$ctrl.closePanel()"
+          ng-disabled="$ctrl.operation.loading"
+          class="rounded-lg px-4 py-2 text-xs text-slate-500 disabled:opacity-40"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          ng-disabled="$ctrl.operation.loading || ($ctrl.isSelection() && !$ctrl.selection)"
+          class="rounded-lg border px-4 py-2 text-xs font-medium transition-colors disabled:opacity-40"
+          ng-class="{'border-rose-200 bg-rose-600 text-white hover:bg-rose-700': $ctrl.panel === 'close', 'border-amber-200 bg-amber-100 text-amber-900 hover:bg-amber-200': $ctrl.panel === 'transfer', 'border-teal-700 bg-teal-700 text-white hover:bg-teal-800': $ctrl.panel !== 'close' && $ctrl.panel !== 'transfer'}"
+        >
+          {{$ctrl.operation.loading ? 'Atualizando…' : 'Confirmar'}}
+        </button>
+      </div>
+    </form>
+  </app-modal>
+</header>

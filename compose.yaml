@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:?Defina POSTGRES_USER no ambiente ou em um arquivo .env local}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no ambiente ou em um arquivo .env local}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-4003}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -15,10 +15,14 @@ services:
     environment:
       MONGO_INITDB_DATABASE: ${MONGO_DB:?Defina MONGO_DB no ambiente ou em um arquivo .env local}
     ports:
-      - "${MONGO_PORT:-27017}:27017"
+      - "${MONGO_PORT:-4004}:27017"
     volumes:
       - mongo_data:/data/db
 
 volumes:
   postgres_data:
+    name: ${POSTGRES_VOLUME:-wxn-chatbot_postgres_data}
+    external: ${DATABASE_VOLUMES_EXTERNAL:-false}
   mongo_data:
+    name: ${MONGO_VOLUME:-wxn-chatbot_mongo_data}
+    external: ${DATABASE_VOLUMES_EXTERNAL:-false}

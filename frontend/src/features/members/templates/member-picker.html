@@ -1,0 +1,13 @@
+<label class="block text-xs font-medium text-slate-600">
+  Membro de destino
+  <select
+    aria-label="Membro de destino"
+    ng-model="$picker.selected"
+    ng-disabled="$picker.disabled"
+    ng-options="member as member.name + ' · ' + member.type + (member.available ? ' · Ativo' : ' · Indisponível') disable when !member.available for member in $picker.members track by member.id"
+    class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-teal-500"
+    required
+  >
+    <option value="">Selecione um membro</option>
+  </select>
+</label>

@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WXN Dashboard</title>
+    <meta name="theme-color" content="#0f766e" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>WXN · Atendimento</title>
   </head>
-  <body ng-app="wxnDashboard">
-    <main>
-      <h1>WXN Dashboard</h1>
-    </main>
+  <body ng-app="wxnDashboard" ng-strict-di ng-cloak>
+    <div ng-view></div>
     <script type="module" src="/app/main.js"></script>
   </body>
 </html>

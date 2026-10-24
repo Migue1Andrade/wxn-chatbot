@@ -1,0 +1,628 @@
+{
+  "info": {
+    "name": "WXN — Primeiro atendimento WhatsApp",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Execute pasta Mock em ordem. Twilio exige configurar company/channel no backend, túnel HTTPS e receber mensagem real antes do envio. Rotas internas somente dev, X-Dev-Api-Key."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4001"
+    },
+    {
+      "key": "companyId",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "humanMemberId",
+      "value": ""
+    },
+    {
+      "key": "botMemberId",
+      "value": ""
+    },
+    {
+      "key": "mockChannelId",
+      "value": ""
+    },
+    {
+      "key": "conversationId",
+      "value": ""
+    },
+    {
+      "key": "inboundMessageId",
+      "value": ""
+    },
+    {
+      "key": "mockExternalId",
+      "value": "postman-inbound-001"
+    },
+    {
+      "key": "twilioChannelId",
+      "value": ""
+    },
+    {
+      "key": "twilioConversationId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Fluxo Mock (sem chamadas externas)",
+      "item": [
+        {
+          "name": "01 Criar empresa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Api-Key",
+                "value": "{{devApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/companies",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"WXN Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('companyId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 Criar usuário com telefone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Api-Key",
+                "value": "{{devApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/companies/{{companyId}}/users",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Atendente\",\n  \"phone\": \"+55 (81) 99999-9999\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Telefone E.164', () => pm.expect(pm.response.json().phone).to.eql('+5581999999999'));",
+                  "pm.collectionVariables.set('userId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 Criar membro HUMAN",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Api-Key",
+                "value": "{{devApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/companies/{{companyId}}/members",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Atendente\",\n  \"type\": \"HUMAN\",\n  \"userId\": \"{{userId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('humanMemberId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 Criar membro BOT",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Api-Key",
+                "value": "{{devApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/companies/{{companyId}}/members",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Assistente\",\n  \"type\": \"BOT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('botMemberId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 Criar canal MOCK",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Api-Key",
+                "value": "{{devApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/companies/{{companyId}}/whatsapp/channels",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mock local\",\n  \"provider\": \"MOCK\",\n  \"phoneNumber\": \"+14155238886\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('mockChannelId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 Simular recebimento",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Api-Key",
+                "value": "{{devApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/dev/whatsapp/mock/inbound",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyId\": \"{{companyId}}\",\n  \"channelId\": \"{{mockChannelId}}\",\n  \"externalMessageId\": \"{{mockExternalId}}\",\n  \"senderPhone\": \"{{contactPhone}}\",\n  \"content\": \"Olá, preciso de atendimento\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json(); pm.collectionVariables.set('conversationId', body.conversationId); pm.collectionVariables.set('inboundMessageId', body.id);",
+                  "pm.test('Inbound normalizado', () => { pm.expect(body.direction).to.eql('INBOUND'); pm.expect(body.status).to.eql('RECEIVED'); pm.expect(body.simulated).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 Repetir recebimento (idempotência)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Api-Key",
+                "value": "{{devApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/dev/whatsapp/mock/inbound",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyId\": \"{{companyId}}\",\n  \"channelId\": \"{{mockChannelId}}\",\n  \"externalMessageId\": \"{{mockExternalId}}\",\n  \"senderPhone\": \"{{contactPhone}}\",\n  \"content\": \"Olá, preciso de atendimento\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Mesmo ID interno', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('inboundMessageId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 Consultar conversas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Dev-Api-Key",
+                "value": "{{devApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/companies/{{companyId}}/conversations"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 Consultar mensagens",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Dev-Api-Key",
+                "value": "{{devApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/companies/{{companyId}}/conversations/{{conversationId}}/messages"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Uma mensagem', () => pm.expect(pm.response.json()).to.have.lengthOf(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10 Responder como humano",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Api-Key",
+                "value": "{{devApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/companies/{{companyId}}/conversations/{{conversationId}}/messages",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channelId\": \"{{mockChannelId}}\",\n  \"memberId\": \"{{humanMemberId}}\",\n  \"content\": \"Resposta do atendente\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Roteamento MOCK e simulação explícita', () => { const b = pm.response.json(); pm.expect(b.provider).to.eql('MOCK'); pm.expect(b.status).to.eql('SIMULATED'); pm.expect(b.simulated).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11 Responder como bot",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Api-Key",
+                "value": "{{devApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/companies/{{companyId}}/conversations/{{conversationId}}/messages",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channelId\": \"{{mockChannelId}}\",\n  \"memberId\": \"{{botMemberId}}\",\n  \"content\": \"Resposta do bot sem IA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Roteamento MOCK e simulação explícita', () => { const b = pm.response.json(); pm.expect(b.provider).to.eql('MOCK'); pm.expect(b.status).to.eql('SIMULATED'); pm.expect(b.simulated).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12 Histórico atualizado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Dev-Api-Key",
+                "value": "{{devApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/companies/{{companyId}}/conversations/{{conversationId}}/messages"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Histórico unificado com três mensagens', () => pm.expect(pm.response.json()).to.have.lengthOf(3));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Twilio (execução manual com credenciais reais)",
+      "item": [
+        {
+          "name": "13 Cadastrar canal TWILIO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Api-Key",
+                "value": "{{devApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/companies/{{companyId}}/whatsapp/channels",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Twilio Sandbox\",\n  \"provider\": \"TWILIO\",\n  \"phoneNumber\": \"{{twilioPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('twilioChannelId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14 Consultar conversas após webhook real",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Dev-Api-Key",
+                "value": "{{devApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/companies/{{companyId}}/conversations"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const c = pm.response.json().find(c => c.channelId == pm.collectionVariables.get('twilioChannelId')); if (c) pm.collectionVariables.set('twilioConversationId', c.id); pm.test('Conversa recebida no Twilio', () => pm.expect(c).to.exist);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15 Enviar resposta REAL via Twilio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Api-Key",
+                "value": "{{devApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/companies/{{companyId}}/conversations/{{twilioConversationId}}/messages",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channelId\": \"{{twilioChannelId}}\",\n  \"memberId\": \"{{humanMemberId}}\",\n  \"content\": \"Resposta pelo Twilio Sandbox\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Envio real aceito', () => { const b = pm.response.json(); pm.expect(b.provider).to.eql('TWILIO'); pm.expect(b.simulated).to.eql(false); pm.expect(b.status).to.not.eql('FAILED'); pm.expect(b.externalMessageId).to.match(/^SM/); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16 Histórico e callbacks Twilio",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Dev-Api-Key",
+                "value": "{{devApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/companies/{{companyId}}/conversations/{{twilioConversationId}}/messages"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

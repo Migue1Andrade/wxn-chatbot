@@ -1,0 +1,155 @@
+<header class="border-b border-slate-100 px-6 pb-5 pt-6">
+  <div class="flex items-center justify-between">
+    <a href="#!/" class="flex items-center gap-3" aria-label="WXN atendimento">
+      <span
+        class="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-700 text-sm font-bold tracking-wider text-white"
+      >
+        W
+      </span>
+      <span class="text-lg font-bold tracking-tight">
+        WXN
+        <span class="ml-2 text-xs font-normal text-slate-400">atendimento</span>
+      </span>
+    </a>
+    <span
+      class="h-9 w-9 rounded-full bg-slate-100 text-center text-xs font-semibold leading-9 text-slate-600"
+      title="{{$ctrl.member.member.name || 'Atendente'}}"
+    >
+      {{$ctrl.member.member.name ? $ctrl.member.member.name.slice(0,2).toUpperCase() : 'WX'}}
+    </span>
+  </div>
+  <div class="mt-6 flex items-center justify-between">
+    <h1 class="text-xl font-semibold tracking-tight">
+      Conversas
+      <span class="ml-1 text-sm font-normal text-slate-400">{{$ctrl.state.conversations.length}}</span>
+    </h1>
+    <span class="flex items-center gap-1.5 text-xs text-slate-500" role="status">
+      <span
+        class="h-1.5 w-1.5 rounded-full"
+        ng-class="{'bg-teal-500': $ctrl.socket.connected, 'bg-amber-400': !$ctrl.socket.connected}"
+      ></span>
+      {{$ctrl.socket.connected ? 'Conectado' : ($ctrl.socket.connecting ? 'Reconectando' : 'Desconectado')}}
+    </span>
+  </div>
+  <label class="mt-4 flex items-center gap-3 rounded-xl bg-slate-100 px-3.5 py-3 text-slate-400">
+    <svg
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.8"
+      aria-hidden="true"
+    >
+      <circle cx="11" cy="11" r="7" />
+      <path d="m16 16 4 4" />
+    </svg>
+    <input
+      type="search"
+      ng-model="$ctrl.query"
+      ng-change="$ctrl.onSearch()"
+      maxlength="100"
+      placeholder="Nome, telefone ou ID"
+      aria-label="Buscar conversa"
+      class="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+    />
+  </label>
+</header>
+<section class="space-y-4 border-b border-slate-100 px-6 py-4" aria-label="Filtros de atendimento">
+  <div>
+    <p class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Fila de atendimento</p>
+    <div class="grid grid-cols-3 gap-1.5" role="group" aria-label="Filtrar conversas">
+      <button
+        type="button"
+        ng-repeat="filter in $ctrl.filters track by filter.value"
+        ng-click="$ctrl.onFilter({filter: filter.value})"
+        aria-pressed="{{$ctrl.state.filter === filter.value}}"
+        class="min-h-10 rounded-lg border px-2 py-2 text-[11px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-teal-600"
+        ng-class="{'border-teal-700 bg-teal-700 text-white shadow-sm': $ctrl.state.filter === filter.value, 'border-slate-200 bg-white text-slate-600 hover:border-teal-300 hover:bg-teal-50': $ctrl.state.filter !== filter.value}"
+      >
+        {{filter.label}}
+      </button>
+    </div>
+  </div>
+  <label class="block text-xs font-medium text-slate-600">
+    Responsável pela conversa
+    <select
+      aria-label="Filtrar por responsável"
+      ng-model="$ctrl.state.responsibleId"
+      ng-disabled="$ctrl.state.filter === 'mine' || $ctrl.state.filter === 'unassigned'"
+      ng-options="member.id as member.name + ' · ' + member.type for member in $ctrl.member.members"
+      ng-change="$ctrl.onResponsible()"
+      class="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 disabled:bg-slate-50 disabled:text-slate-400"
+    >
+      <option value="">Todos os responsáveis</option>
+    </select>
+  </label>
+  <div
+    ng-if="$ctrl.member.availableHumans.length"
+    class="rounded-xl border border-teal-100 bg-teal-50/60 p-3"
+  >
+    <label class="block text-[10px] font-semibold uppercase tracking-wider text-teal-800">
+      Respondendo como
+      <select
+        aria-label="Atendente de desenvolvimento"
+        ng-model="$ctrl.readerId"
+        ng-options="member.id as member.name for member in $ctrl.member.availableHumans"
+        ng-change="$ctrl.onReader({id: $ctrl.readerId})"
+        class="mt-1.5 w-full rounded-lg border border-teal-200 bg-white px-2.5 py-2 text-xs font-medium normal-case tracking-normal text-slate-700 outline-none focus:ring-2 focus:ring-teal-200"
+      ></select>
+    </label>
+    <p class="mt-1.5 text-[10px] leading-4 text-teal-700">Define suas conversas e mensagens não lidas.</p>
+  </div>
+</section>
+<div ng-if="$ctrl.state.error" class="m-4 rounded-xl bg-red-50 p-4 text-sm text-red-700" role="alert">
+  {{$ctrl.state.error}}
+  <button class="mt-2 block font-semibold underline" ng-click="$ctrl.onRetry()">Tentar novamente</button>
+</div>
+<loading-state ng-if="$ctrl.state.loading" label="Carregando conversas"></loading-state>
+<chat-list
+  class="min-h-0 flex-1 overflow-y-auto"
+  items="$ctrl.state.conversations"
+  query="$ctrl.query"
+  selected-id="$ctrl.state.selected.id"
+  loading="$ctrl.state.loading"
+  error="$ctrl.state.error"
+  unread="$ctrl.state.unread"
+  on-select="$ctrl.onSelect({conversation: conversation})"
+  member-name="$ctrl.memberName(id)"
+></chat-list>
+<button
+  ng-if="$ctrl.state.hasMore"
+  type="button"
+  ng-disabled="$ctrl.state.loadingMore || $ctrl.state.loading"
+  ng-click="$ctrl.onMore()"
+  class="mx-6 mb-3 rounded-lg border border-slate-200 px-3 py-2 text-xs text-teal-700 disabled:opacity-40"
+>
+  {{$ctrl.state.loadingMore ? 'Carregando…' : 'Carregar mais conversas'}}
+</button>
+<div
+  ng-if="$ctrl.socket.error"
+  role="status"
+  class="mx-6 mb-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-700"
+>
+  {{$ctrl.socket.error}}
+  <button
+    ng-if="!$ctrl.socket.connecting"
+    type="button"
+    ng-click="$ctrl.onReconnect()"
+    class="ml-2 underline"
+  >
+    Reconectar
+  </button>
+</div>
+<div
+  ng-if="$ctrl.contextError"
+  role="alert"
+  class="mx-6 mb-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-700"
+>
+  {{$ctrl.contextError}}
+  <button type="button" ng-click="$ctrl.onRetry()" class="ml-2 underline">Atualizar</button>
+</div>
+<footer class="flex items-center gap-2 border-t border-slate-100 px-6 py-4 text-xs text-slate-400">
+  <span class="h-1.5 w-1.5 rounded-full bg-teal-500"></span>
+  Ambiente de desenvolvimento
+</footer>
