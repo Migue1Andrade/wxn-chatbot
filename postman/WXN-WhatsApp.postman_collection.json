@@ -2,7 +2,7 @@
   "info": {
     "name": "WXN — Primeiro atendimento WhatsApp",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Execute pasta Mock em ordem. Twilio exige configurar company/channel no backend, túnel HTTPS e receber mensagem real antes do envio. Rotas internas somente dev, X-Dev-Api-Key."
+    "description": "WXN local: execute seed-local-users.mjs e configure loginUsername/loginPassword e a chave de desenvolvimento. A sessão usa cookies e X-CSRF-Token. Cadastro de HUMAN via /api/users com identidade completa."
   },
   "variable": [
     {
@@ -10,11 +10,7 @@
       "value": "http://localhost:4001"
     },
     {
-      "key": "companyId",
-      "value": ""
-    },
-    {
-      "key": "userId",
+      "key": "departmentId",
       "value": ""
     },
     {
@@ -48,14 +44,106 @@
     {
       "key": "twilioConversationId",
       "value": ""
+    },
+    {
+      "key": "csrfToken",
+      "value": ""
+    },
+    {
+      "key": "loginUsername",
+      "value": ""
+    },
+    {
+      "key": "loginPassword",
+      "value": ""
     }
   ],
   "item": [
     {
+      "name": "00 Sessão e login",
+      "item": [
+        {
+          "name": "Obter cookie de sessão e CSRF",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Dev-Api-Key",
+                "value": "{{devApiKey}}"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/session"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('csrfToken', pm.response.json().csrfToken); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Entrar com usuário ADMIN",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Api-Key",
+                "value": "{{devApiKey}}"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{loginUsername}}\",\n  \"password\": \"{{loginPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('csrfToken', pm.response.json().csrfToken); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Fluxo Mock (sem chamadas externas)",
       "item": [
         {
-          "name": "01 Criar empresa",
+          "name": "Criar setor",
           "request": {
             "method": "POST",
             "header": [
@@ -66,12 +154,16 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/companies",
+            "url": "{{baseUrl}}/api/departments",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"WXN Postman\"\n}",
+              "raw": "{\n  \"name\": \"Suporte\",\n  \"color\": \"#2563EB\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -86,16 +178,16 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set('companyId', pm.response.json().id);"
+                  "pm.collectionVariables.set('departmentId', pm.response.json().id);"
                 ]
               }
             }
           ]
         },
         {
-          "name": "02 Criar usuário com telefone",
+          "name": "02 Consultar usuários (ADMIN)",
           "request": {
-            "method": "POST",
+            "method": "GET",
             "header": [
               {
                 "key": "X-Dev-Api-Key",
@@ -104,37 +196,28 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/companies/{{companyId}}/users",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Atendente\",\n  \"phone\": \"+55 (81) 99999-9999\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
+            "url": "{{baseUrl}}/api/users"
           },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
-                  "pm.test('Telefone E.164', () => pm.expect(pm.response.json().phone).to.eql('+5581999999999'));",
-                  "pm.collectionVariables.set('userId', pm.response.json().id);"
-                ]
+                "exec": ["pm.test('HTTP 200', () => pm.response.to.have.status(200));"]
               }
             }
           ]
         },
         {
-          "name": "03 Criar membro HUMAN",
+          "name": "03 Selecionar atendente existente",
           "request": {
-            "method": "POST",
+            "method": "GET",
             "header": [
               {
                 "key": "X-Dev-Api-Key",
@@ -143,18 +226,13 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/companies/{{companyId}}/members",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Atendente\",\n  \"type\": \"HUMAN\",\n  \"userId\": \"{{userId}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
+            "url": "{{baseUrl}}/api/members"
           },
           "event": [
             {
@@ -162,8 +240,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set('humanMemberId', pm.response.json().id);"
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const attendant = pm.response.json().find(member => member.type === 'HUMAN' && member.status === 'ACTIVE' && member.accountStatus === 'ACTIVE');",
+                  "pm.test('Atendente ativo cadastrado', () => pm.expect(attendant).to.exist);",
+                  "if (attendant) { pm.collectionVariables.set('humanMemberId', attendant.id); }"
                 ]
               }
             }
@@ -181,9 +261,13 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/companies/{{companyId}}/members",
+            "url": "{{baseUrl}}/api/members",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Assistente\",\n  \"type\": \"BOT\"\n}",
@@ -219,9 +303,13 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/companies/{{companyId}}/whatsapp/channels",
+            "url": "{{baseUrl}}/api/whatsapp/channels",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Mock local\",\n  \"provider\": \"MOCK\",\n  \"phoneNumber\": \"+14155238886\"\n}",
@@ -257,12 +345,16 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/dev/whatsapp/mock/inbound",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"companyId\": \"{{companyId}}\",\n  \"channelId\": \"{{mockChannelId}}\",\n  \"externalMessageId\": \"{{mockExternalId}}\",\n  \"senderPhone\": \"{{contactPhone}}\",\n  \"content\": \"Olá, preciso de atendimento\"\n}",
+              "raw": "{\n  \"channelId\": \"{{mockChannelId}}\",\n  \"externalMessageId\": \"{{mockExternalId}}\",\n  \"senderPhone\": \"{{contactPhone}}\",\n  \"content\": \"Olá, preciso de atendimento\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -296,12 +388,16 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/dev/whatsapp/mock/inbound",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"companyId\": \"{{companyId}}\",\n  \"channelId\": \"{{mockChannelId}}\",\n  \"externalMessageId\": \"{{mockExternalId}}\",\n  \"senderPhone\": \"{{contactPhone}}\",\n  \"content\": \"Olá, preciso de atendimento\"\n}",
+              "raw": "{\n  \"channelId\": \"{{mockChannelId}}\",\n  \"externalMessageId\": \"{{mockExternalId}}\",\n  \"senderPhone\": \"{{contactPhone}}\",\n  \"content\": \"Olá, preciso de atendimento\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -334,18 +430,20 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/companies/{{companyId}}/conversations"
+            "url": "{{baseUrl}}/api/conversations"
           },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
-                ]
+                "exec": ["pm.test('HTTP 200', () => pm.response.to.have.status(200));"]
               }
             }
           ]
@@ -362,9 +460,13 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/companies/{{companyId}}/conversations/{{conversationId}}/messages"
+            "url": "{{baseUrl}}/api/conversations/{{conversationId}}/messages"
           },
           "event": [
             {
@@ -391,12 +493,16 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/companies/{{companyId}}/conversations/{{conversationId}}/messages",
+            "url": "{{baseUrl}}/api/conversations/{{conversationId}}/messages",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"channelId\": \"{{mockChannelId}}\",\n  \"memberId\": \"{{humanMemberId}}\",\n  \"content\": \"Resposta do atendente\"\n}",
+              "raw": "{\n  \"channelId\": \"{{mockChannelId}}\",\n  \"memberId\": \"{{humanMemberId}}\",\n  \"content\": \"Resposta do atendente\",\n  \"operationId\": \"{{$guid}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -429,12 +535,16 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/companies/{{companyId}}/conversations/{{conversationId}}/messages",
+            "url": "{{baseUrl}}/api/conversations/{{conversationId}}/messages",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"channelId\": \"{{mockChannelId}}\",\n  \"memberId\": \"{{botMemberId}}\",\n  \"content\": \"Resposta do bot sem IA\"\n}",
+              "raw": "{\n  \"channelId\": \"{{mockChannelId}}\",\n  \"memberId\": \"{{botMemberId}}\",\n  \"content\": \"Resposta do bot sem IA\",\n  \"operationId\": \"{{$guid}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -467,9 +577,13 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/companies/{{companyId}}/conversations/{{conversationId}}/messages"
+            "url": "{{baseUrl}}/api/conversations/{{conversationId}}/messages"
           },
           "event": [
             {
@@ -501,9 +615,13 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/companies/{{companyId}}/whatsapp/channels",
+            "url": "{{baseUrl}}/api/whatsapp/channels",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Twilio Sandbox\",\n  \"provider\": \"TWILIO\",\n  \"phoneNumber\": \"{{twilioPhone}}\"\n}",
@@ -539,9 +657,13 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/companies/{{companyId}}/conversations"
+            "url": "{{baseUrl}}/api/conversations"
           },
           "event": [
             {
@@ -568,12 +690,16 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/companies/{{companyId}}/conversations/{{twilioConversationId}}/messages",
+            "url": "{{baseUrl}}/api/conversations/{{twilioConversationId}}/messages",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"channelId\": \"{{twilioChannelId}}\",\n  \"memberId\": \"{{humanMemberId}}\",\n  \"content\": \"Resposta pelo Twilio Sandbox\"\n}",
+              "raw": "{\n  \"channelId\": \"{{twilioChannelId}}\",\n  \"memberId\": \"{{humanMemberId}}\",\n  \"content\": \"Resposta pelo Twilio Sandbox\",\n  \"operationId\": \"{{$guid}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -606,18 +732,20 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/companies/{{companyId}}/conversations/{{twilioConversationId}}/messages"
+            "url": "{{baseUrl}}/api/conversations/{{twilioConversationId}}/messages"
           },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
-                ]
+                "exec": ["pm.test('HTTP 200', () => pm.response.to.have.status(200));"]
               }
             }
           ]

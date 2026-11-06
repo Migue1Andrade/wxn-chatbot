@@ -8,7 +8,11 @@ angular.module('wxn.messages').factory('MessagesService', [
         return api.get(path(id), { limit: 30, ...(before ? { before } : {}) });
       },
       sendMessage(id, payload) {
-        return api.post(path(id), payload);
+        const { replyToMessageId, ...body } = payload;
+        return api.post(
+          path(id) + (replyToMessageId ? '/' + encodeURIComponent(replyToMessageId) + '/reply' : ''),
+          body,
+        );
       },
     };
   },

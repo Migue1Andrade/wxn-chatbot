@@ -1,12 +1,15 @@
 <div
-  class="chat-wallpaper min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8 lg:px-16"
+  class="chat-wallpaper message-viewport"
   data-message-scroll
   role="log"
   aria-label="Histórico de mensagens"
   aria-live="polite"
   aria-relevant="additions"
 >
-  <div ng-if="$ctrl.hasMore" class="mb-4 text-center">
+  <div
+    ng-if="$ctrl.hasMore"
+    class="mb-4 text-center"
+  >
     <button
       type="button"
       ng-click="$ctrl.onLoadOlder()"
@@ -16,42 +19,58 @@
       {{$ctrl.olderLoading ? 'Carregando…' : 'Carregar mensagens anteriores'}}
     </button>
   </div>
-  <loading-state ng-if="$ctrl.loading" label="Carregando histórico"></loading-state>
+  <loading-state
+    ng-if="$ctrl.loading"
+    label="Carregando histórico"
+  ></loading-state>
   <div
     ng-if="$ctrl.error"
     class="mx-auto mb-4 max-w-lg rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700"
     role="alert"
   >
     {{$ctrl.error}}
-    <button type="button" ng-click="$ctrl.onRetry()" class="ml-2 underline">Atualizar histórico</button>
+    <button
+      type="button"
+      ng-click="$ctrl.onRetry()"
+      class="ml-2 underline"
+    >
+      Atualizar histórico
+    </button>
   </div>
   <empty-state
     ng-if="!$ctrl.messages.length && !$ctrl.loading"
     title="Ainda não há mensagens"
     description="Envie uma mensagem para iniciar o atendimento."
   ></empty-state>
-  <div class="mx-auto max-w-4xl">
+  <div class="message-timeline">
     <div
       ng-repeat="entry in $ctrl.entries track by entry.id"
       data-message-id="{{entry.kind === 'message' ? entry.message.id : ''}}"
     >
-      <div ng-if="$ctrl.isNewDay($index)" class="mb-6 mt-2 flex justify-center">
-        <time
-          class="rounded-lg border border-slate-200/70 bg-white/90 px-3 py-1.5 text-[10px] font-medium text-slate-500"
-        >
-          {{entry.createdAt | date:'dd/MM/yyyy'}}
-        </time>
+      <div
+        ng-if="$ctrl.isNewDay($index)"
+        class="message-day"
+      >
+        <time class="message-day-label">{{entry.createdAt | date:'dd/MM/yyyy'}}</time>
       </div>
       <message-bubble
         ng-if="entry.kind === 'message'"
         message="entry.message"
+        contact-name="{{$ctrl.contactName}}"
         member-name="{{$ctrl.memberName({id: entry.message.memberId})}}"
       ></message-bubble>
-      <div ng-if="entry.kind === 'activity'" class="my-4 text-center" data-activity-id="{{entry.event.id}}">
+      <div
+        ng-if="entry.kind === 'activity'"
+        class="timeline-activity"
+        data-activity-id="{{entry.event.id}}"
+      >
         <span class="inline-block max-w-full rounded-lg bg-white/80 px-3 py-2 text-[11px] text-slate-500">
           {{$ctrl.eventLabel(entry.event)}}
           <time class="ml-2 text-[10px]">{{entry.createdAt | date:'HH:mm'}}</time>
-          <span ng-if="entry.event.reason" class="mt-1 block text-[10px] text-slate-400">
+          <span
+            ng-if="entry.event.reason"
+            class="mt-1 block text-[10px] text-slate-400"
+          >
             {{entry.event.reason}}
           </span>
         </span>

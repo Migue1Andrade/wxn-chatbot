@@ -18,7 +18,6 @@ public final class ChannelDtos {
 
     public record Response(
         Long id,
-        Long companyId,
         String name,
         ProviderType provider,
         String phoneNumber,

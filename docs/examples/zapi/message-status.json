@@ -1,0 +1,10 @@
+{
+  "instanceId": "SEU_INSTANCE_ID",
+  "status": "READ",
+  "ids": ["ID_EXTERNO_DA_SAIDA"],
+  "momment": 1793206801000,
+  "phoneDevice": 0,
+  "phone": "5511888888888",
+  "type": "MessageStatusCallback",
+  "isGroup": false
+}

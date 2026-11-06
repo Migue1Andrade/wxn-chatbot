@@ -1,43 +1,43 @@
 <button
   type="button"
   ng-click="$ctrl.onSelect({conversation: $ctrl.conversation})"
-  class="my-0.5 flex w-full items-center gap-3 rounded-xl px-4 py-4 text-left transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-teal-600"
-  ng-class="{'bg-teal-50 ring-1 ring-inset ring-teal-200': $ctrl.selected}"
+  class="conversation-row"
+  ng-class="{'is-selected': $ctrl.selected}"
   aria-pressed="{{$ctrl.selected}}"
   data-conversation-id="{{$ctrl.conversation.id}}"
 >
   <span
-    class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-200 text-sm font-medium text-slate-600"
+    class="contact-avatar"
+    ng-class="'avatar-' + $ctrl.tone($ctrl.conversation.displayName || $ctrl.conversation.contactPhone)"
   >
-    {{$ctrl.conversation.contactPhone ? $ctrl.conversation.contactPhone.slice(-2) : 'CT'}}
+    {{$ctrl.initials($ctrl.conversation.displayName || $ctrl.conversation.contactPhone)}}
   </span>
-  <span class="min-w-0 flex-1">
-    <span class="flex items-baseline justify-between gap-2">
-      <span class="truncate text-sm font-semibold">
+  <span class="conversation-summary">
+    <span class="conversation-title">
+      <strong>
         {{$ctrl.conversation.displayName || $ctrl.conversation.contactPhone || 'Conversa antiga'}}
-      </span>
-      <time class="shrink-0 text-[10px] text-slate-400">{{$ctrl.conversation.updatedAt | date:'HH:mm'}}</time>
+      </strong>
+      <time>{{$ctrl.conversation.updatedAt | date:'HH:mm'}}</time>
     </span>
-    <span class="mt-1.5 flex items-center justify-between gap-2">
-      <span class="truncate text-xs text-slate-500">
-        {{$ctrl.conversation.lastMessagePreview || 'Ver histórico da conversa'}}
+    <span class="conversation-preview">
+      {{$ctrl.conversation.lastMessagePreview || 'Ver histórico da conversa'}}
+    </span>
+    <span class="conversation-meta">
+      <span
+        class="status-tag"
+        ng-class="{'status-waiting': $ctrl.conversation.status === 'PENDING', 'status-active': $ctrl.conversation.status === 'IN_PROGRESS', 'status-closed': $ctrl.conversation.status === 'CLOSED'}"
+      >
+        {{$ctrl.conversation.status === 'CLOSED' ? 'Finalizado' : ($ctrl.conversation.status === 'IN_PROGRESS'
+        ? 'Em atendimento' : 'Aguardando')}}
       </span>
+      <span class="conversation-owner">{{$ctrl.memberName}}</span>
       <span
         ng-if="$ctrl.unread"
-        class="flex h-5 min-w-5 items-center justify-center rounded-full bg-teal-600 px-1 text-[10px] font-semibold text-white"
+        class="unread-badge"
+        aria-label="{{$ctrl.unread}} mensagens não lidas"
       >
         {{$ctrl.unread}}
       </span>
-    </span>
-    <span class="mt-2 flex items-center gap-2 text-[10px] text-slate-400">
-      <span
-        class="rounded-full px-2 py-0.5 font-medium"
-        ng-class="{'bg-amber-50 text-amber-800': $ctrl.conversation.status === 'PENDING', 'bg-teal-50 text-teal-800': $ctrl.conversation.status === 'IN_PROGRESS', 'bg-slate-100 text-slate-500': $ctrl.conversation.status === 'CLOSED'}"
-      >
-        {{$ctrl.conversation.status === 'CLOSED' ? 'Finalizado' : ($ctrl.conversation.status === 'IN_PROGRESS'
-        ? 'Em atendimento' : 'Pendente')}}
-      </span>
-      <span class="truncate">{{$ctrl.memberName}}</span>
     </span>
   </span>
 </button>

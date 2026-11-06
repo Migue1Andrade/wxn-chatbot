@@ -11,8 +11,9 @@ angular.module('wxn.chats').factory('ConversationActionsService', [
   function (api) {
     return {
       execute(id, action, payload) {
-        if (!Object.values(ConversationActions).includes(action))
+        if (!Object.values(ConversationActions).includes(action)) {
           throw new Error('Ação de atendimento inválida.');
+        }
         return api.patch('/conversations/' + encodeURIComponent(id) + '/' + action, payload);
       },
     };

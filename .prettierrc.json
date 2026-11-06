@@ -1,10 +1,25 @@
 {
   "printWidth": 110,
   "tabWidth": 2,
+  "useTabs": false,
+  "semi": true,
   "singleQuote": true,
   "trailingComma": "all",
+  "endOfLine": "lf",
+  "singleAttributePerLine": true,
+  "plugins": ["prettier-plugin-java", "@prettier/plugin-xml"],
   "overrides": [
-    { "files": "*.java", "options": { "tabWidth": 4 } },
-    { "files": "*.html", "options": { "htmlWhitespaceSensitivity": "ignore" } }
+    {
+      "files": "*.java",
+      "options": { "tabWidth": 4 }
+    },
+    {
+      "files": "*.xml",
+      "options": { "tabWidth": 4, "xmlWhitespaceSensitivity": "ignore" }
+    },
+    {
+      "files": "*.html",
+      "options": { "htmlWhitespaceSensitivity": "ignore" }
+    }
   ]
 }

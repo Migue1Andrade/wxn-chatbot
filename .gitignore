@@ -1,7 +1,6 @@
 .idea/
 target/
 .env
-AGENTS.md
 *.log
 
 node_modules/

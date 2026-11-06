@@ -2,6 +2,7 @@ import angular from 'angular';
 import { ConversationFilters, queryParameters } from './conversation-filters.js';
 
 angular.module('wxn.chats').controller('ChatsController', [
+  '$location',
   '$scope',
   '$timeout',
   '$q',
@@ -16,6 +17,7 @@ angular.module('wxn.chats').controller('ChatsController', [
   'DevMemberContextService',
   'ChannelsService',
   function (
+    $location,
     $scope,
     $timeout,
     $q,
@@ -38,6 +40,16 @@ angular.module('wxn.chats').controller('ChatsController', [
     vm.filters = ConversationFilters;
     vm.channels = [];
     vm.mobileOpen = false;
+    const desktopDetails = window.matchMedia('(min-width:1251px)');
+    const responsiveDetails = () => {
+      if (desktopDetails.matches) {
+        $scope.$evalAsync(() => {
+          vm.teamOpen = false;
+        });
+      }
+    };
+    desktopDetails.addEventListener('change', responsiveDetails);
+    $scope.$on('$destroy', () => desktopDetails.removeEventListener('change', responsiveDetails));
     vm.contextError = vm.member.error;
     let destroyed = false;
     let generation = 0;
@@ -49,6 +61,7 @@ angular.module('wxn.chats').controller('ChatsController', [
       vm.channels.some((channel) => channel.id === id && channel.status === 'ACTIVE');
     vm.select = (conversation) => {
       store.select(conversation);
+      $location.search('conversation', conversation.id);
       vm.mobileOpen = true;
       bus.emit(chatEvents.SELECTED, conversation);
     };
@@ -64,7 +77,9 @@ angular.module('wxn.chats').controller('ChatsController', [
     }
     vm.changeFilter = (filter) => {
       vm.state.filter = filter;
-      if (filter === 'mine' || filter === 'unassigned') vm.state.responsibleId = null;
+      if (filter === 'mine' || filter === 'unassigned') {
+        vm.state.responsibleId = null;
+      }
       resetQuery();
     };
     vm.search = () => {
@@ -80,7 +95,9 @@ angular.module('wxn.chats').controller('ChatsController', [
     vm.changeResponsible = () => resetQuery();
     vm.changeReader = (id) => memberContext.choose(id);
     vm.refresh = function () {
-      if (destroyed) return;
+      if (destroyed) {
+        return;
+      }
       if (vm.state.filter === 'mine' && !vm.state.readerId) {
         vm.state.loading = false;
         store.replace([], store.revision());
@@ -94,9 +111,13 @@ angular.module('wxn.chats').controller('ChatsController', [
       const rows = [];
       function load(page) {
         return chats.listConversations(filters, page).then((result) => {
-          if (destroyed || token !== generation) return;
+          if (destroyed || token !== generation) {
+            return;
+          }
           rows.push(...result.items);
-          if (result.hasMore && page + 1 < loadedPages) return load(page + 1);
+          if (result.hasMore && page + 1 < loadedPages) {
+            return load(page + 1);
+          }
           store.replace(rows, requestedAt);
           vm.state.hasMore = result.hasMore;
           vm.state.nextPage = result.nextPage;
@@ -104,28 +125,38 @@ angular.module('wxn.chats').controller('ChatsController', [
       }
       return load(0)
         .catch((error) => {
-          if (token === generation) vm.state.error = error.userMessage;
+          if (token === generation) {
+            vm.state.error = error.userMessage;
+          }
         })
         .finally(() => {
-          if (token === generation) vm.state.loading = false;
+          if (token === generation) {
+            vm.state.loading = false;
+          }
         });
     };
     vm.loadMore = () => {
-      if (!vm.state.hasMore || vm.state.loading || vm.state.loadingMore) return;
+      if (!vm.state.hasMore || vm.state.loading || vm.state.loadingMore) {
+        return;
+      }
       const token = generation;
       const requestedAt = store.revision();
       vm.state.loadingMore = true;
       chats
         .listConversations(queryParameters(vm.state), vm.state.nextPage)
         .then((result) => {
-          if (destroyed || token !== generation) return;
+          if (destroyed || token !== generation) {
+            return;
+          }
           store.replace([...vm.state.conversations, ...result.items], requestedAt);
           loadedPages++;
           vm.state.hasMore = result.hasMore;
           vm.state.nextPage = result.nextPage;
         })
         .catch((error) => {
-          if (token === generation) vm.state.error = error.userMessage;
+          if (token === generation) {
+            vm.state.error = error.userMessage;
+          }
         })
         .finally(() => {
           vm.state.loadingMore = false;
@@ -174,23 +205,58 @@ angular.module('wxn.chats').controller('ChatsController', [
       chatEvents.REOPENED,
     ].map((type) => bus.on(type, conversationEvent));
     cleanup.push(
+      bus.on(chatEvents.ACCESS_REVOKED, (event) => {
+        vm.state.conversations = vm.state.conversations.filter((row) => row.id !== event.conversationId);
+        if (vm.state.selected?.id === event.conversationId) {
+          store.select(null);
+          bus.emit(chatEvents.SELECTED, null);
+          vm.mobileOpen = false;
+        }
+        generation++;
+        scheduleRefresh();
+      }),
       bus.on(chatEvents.READ_UPDATED, (event) => store.read(event.payload)),
       bus.on(messageEvents.RECEIVED, scheduleRefresh),
       bus.on(messageEvents.SENT, scheduleRefresh),
       bus.on(memberEvents.UPDATED, readerChanged),
       bus.on(appEvents.SOCKET_CONNECTED, () => {
-        if (vm.state.selected)
+        if (vm.state.selected) {
           chats
             .getConversation(vm.state.selected.id)
             .then(store.applyEvent)
             .catch((error) => {
               vm.state.error = error.userMessage;
+              if (error.status === 403) {
+                store.select(null);
+                bus.emit(chatEvents.SELECTED, null);
+              }
             });
+        }
         synchronizeContext();
       }),
     );
     socket.connect();
-    synchronizeContext();
+    function openConversationFromUrl() {
+      const id = $location.search().conversation;
+      if (!id || id === vm.state.selected?.id) {
+        return;
+      }
+      synchronizeContext()
+        .then(() => chats.getConversation(id))
+        .then((conversation) => {
+          if (!destroyed && $location.search().conversation === id) {
+            vm.select(conversation);
+          }
+        })
+        .catch((error) => {
+          if (!destroyed && $location.search().conversation === id) {
+            vm.state.error = error.userMessage;
+            $location.search('conversation', null);
+          }
+        });
+    }
+    openConversationFromUrl();
+    $scope.$on('$routeUpdate', openConversationFromUrl);
     $scope.$on('$destroy', () => {
       destroyed = true;
       generation++;

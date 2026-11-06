@@ -13,15 +13,22 @@ public class WhatsAppProviderResolver {
 
     public WhatsAppProviderResolver(List<WhatsAppProvider> adapters) {
         for (WhatsAppProvider adapter : adapters) {
-            if (providers.put(adapter.type(), adapter) != null) throw new IllegalStateException(
-                "Adapter duplicado"
-            );
+            if (providers.put(adapter.type(), adapter) != null) {
+                throw new IllegalStateException("Adapter duplicado");
+            }
         }
+    }
+
+    public java.util.Set<MessageCapability> messageCapabilities(ProviderType type) {
+        var adapter = providers.get(type);
+        return adapter == null ? java.util.Set.of() : adapter.messageCapabilities();
     }
 
     public WhatsAppProvider resolve(WhatsAppChannel channel) {
         WhatsAppProvider provider = providers.get(channel.getProvider());
-        if (provider == null) throw ApiException.conflict("Provedor não disponível neste ambiente");
+        if (provider == null) {
+            throw ApiException.conflict("Provedor não disponível neste ambiente");
+        }
         return provider;
     }
 
@@ -32,12 +39,12 @@ public class WhatsAppProviderResolver {
     ) {
         WhatsAppProvider provider = resolve(channel);
         ProviderCapabilities capabilities = provider.capabilities();
-        if (
-            conversationType == ConversationType.GROUP && !capabilities.groups()
-        ) throw ApiException.badRequest("Provedor não suporta grupos");
-        if (messageType != MessageType.TEXT || !capabilities.individualText()) throw ApiException.badRequest(
-            "Envio suportado somente para texto individual"
-        );
+        if (conversationType == ConversationType.GROUP && !capabilities.groups()) {
+            throw ApiException.badRequest("Provedor não suporta grupos");
+        }
+        if (messageType != MessageType.TEXT || !capabilities.individualText()) {
+            throw ApiException.badRequest("Envio suportado somente para texto individual");
+        }
         return provider;
     }
 }

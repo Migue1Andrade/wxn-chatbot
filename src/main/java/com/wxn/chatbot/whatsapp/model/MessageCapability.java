@@ -1,0 +1,19 @@
+package com.wxn.chatbot.whatsapp.model;
+
+public enum MessageCapability {
+    SEND_TEXT,
+    REPLY_TEXT,
+    FORWARD_TEXT,
+    DELETE_FOR_EVERYONE,
+    DELETE_FOR_ME,
+    EDIT_TEXT,
+    MESSAGE_STATUS,
+    SEND_REACTION,
+    REMOVE_REACTION,
+    MARK_READ,
+    CONNECTION_STATUS,
+    QR_CODE,
+    CONFIGURE_WEBHOOKS,
+    RESTART_INSTANCE,
+    DISCONNECT_INSTANCE,
+}

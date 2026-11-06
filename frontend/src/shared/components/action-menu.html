@@ -1,0 +1,23 @@
+<div
+  class="action-menu"
+  ng-class="{'opens-up':$ctrl.upward}"
+>
+  <button
+    type="button"
+    class="directory-edit"
+    ng-click="$ctrl.toggle()"
+    aria-label="{{$ctrl.label}}"
+    title="{{$ctrl.label}}"
+    aria-expanded="{{$ctrl.open}}"
+  >
+    •••
+  </button>
+  <div
+    class="action-menu-items"
+    ng-if="$ctrl.open"
+    ng-transclude
+    role="group"
+    aria-label="{{$ctrl.label}}"
+    ng-click="$ctrl.close(true)"
+  ></div>
+</div>

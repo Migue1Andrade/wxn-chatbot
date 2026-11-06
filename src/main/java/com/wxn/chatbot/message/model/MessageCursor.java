@@ -27,11 +27,15 @@ public record MessageCursor(OffsetDateTime timestamp, ObjectId id) {
 
     public static MessageCursor decode(String value) {
         try {
-            if (value.length() > 100) throw new IllegalArgumentException();
+            if (value.length() > 100) {
+                throw new IllegalArgumentException();
+            }
             String[] parts = new String(Base64.getUrlDecoder().decode(value), StandardCharsets.UTF_8).split(
                 ":"
             );
-            if (parts.length != 2 || !ObjectId.isValid(parts[1])) throw new IllegalArgumentException();
+            if (parts.length != 2 || !ObjectId.isValid(parts[1])) {
+                throw new IllegalArgumentException();
+            }
             return new MessageCursor(
                 Instant.ofEpochMilli(Long.parseLong(parts[0])).atOffset(ZoneOffset.UTC),
                 new ObjectId(parts[1])

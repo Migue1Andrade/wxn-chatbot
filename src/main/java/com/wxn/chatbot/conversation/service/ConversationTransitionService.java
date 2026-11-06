@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class ConversationTransitionService {
 
+    private final ConversationWriteCoordinator writes;
     private final ConversationRepository repository;
     private final ConversationActivityService activities;
     private final ConversationEventPublisher events;
@@ -20,8 +21,10 @@ public class ConversationTransitionService {
     public ConversationTransitionService(
         ConversationRepository repository,
         ConversationActivityService activities,
-        ConversationEventPublisher events
+        ConversationEventPublisher events,
+        ConversationWriteCoordinator writes
     ) {
+        this.writes = writes;
         this.repository = repository;
         this.activities = activities;
         this.events = events;
@@ -47,21 +50,31 @@ public class ConversationTransitionService {
             expectedVersion + 1,
             OffsetDateTime.now()
         );
-        var updated = repository.changeState(
-            current,
-            expectedVersion,
-            transition.status(),
-            transition.memberId(),
-            transition.closedAt(),
-            activity
+        var updated = writes.execute(current.getId().toHexString(), () ->
+            repository.changeState(
+                current,
+                expectedVersion,
+                transition.status(),
+                transition.memberId(),
+                transition.closedAt(),
+                activity
+            )
         );
         updated.ifPresent(conversation -> {
             activities.flush(conversation);
-            events.publish(
-                transition.eventType(),
-                conversation.getCompanyId(),
-                ConversationMapper.response(conversation)
-            );
+            if (
+                current.getAssignedMemberId() != null &&
+                !java.util.Objects.equals(current.getAssignedMemberId(), conversation.getAssignedMemberId())
+            ) {
+                events.publish(
+                    com.wxn.chatbot.conversation.event.ConversationEventTypes.ACCESS_REVOKED,
+                    new com.wxn.chatbot.conversation.event.AccessRevoked(
+                        current.getId().toHexString(),
+                        current.getAssignedMemberId()
+                    )
+                );
+            }
+            events.publish(transition.eventType(), ConversationMapper.response(conversation));
         });
         return updated;
     }

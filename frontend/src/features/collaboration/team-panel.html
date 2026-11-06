@@ -1,0 +1,168 @@
+<aside
+  class="team-panel"
+  ng-class="{'is-collapsed': team.collapsed}"
+  aria-label="Colaboração do atendimento"
+>
+  <header>
+    <button
+      type="button"
+      class="team-close"
+      ng-click="team.onClose()"
+      aria-label="Fechar painel da equipe"
+    >
+      ✕
+    </button>
+    <strong>Workspace da equipe</strong>
+    <button
+      type="button"
+      ng-click="team.collapsed = !team.collapsed"
+      aria-label="{{team.collapsed ? 'Expandir painel' : 'Recolher painel'}}"
+    >
+      {{team.collapsed ? '←' : '→'}}
+    </button>
+  </header>
+  <div ng-if="!team.collapsed">
+    <nav aria-label="Informações do atendimento">
+      <button
+        ng-class="{'is-active': team.tab === 'notes'}"
+        ng-click="team.changeTab('notes')"
+      >
+        Notas
+      </button>
+      <button
+        ng-class="{'is-active': team.tab === 'internal-messages'}"
+        ng-click="team.changeTab('internal-messages')"
+      >
+        Discussão interna
+      </button>
+    </nav>
+    <a
+      href="#!/tasks?conversation={{team.conversation.id}}"
+      class="mt-4 inline-block text-xs text-teal-700"
+    >
+      Criar atividade ↗
+    </a>
+    <p class="team-private">Somente equipe · não enviado ao WhatsApp</p>
+    <p
+      ng-if="team.error"
+      role="alert"
+      class="team-error"
+    >
+      {{team.error}}
+    </p>
+    <form ng-submit="team.save()">
+      <label class="sr-only">{{team.tab === 'notes' ? 'Anotação' : 'Mensagem interna'}}</label>
+      <textarea
+        ng-model="team.text"
+        ng-change="team.changed()"
+        maxlength="5000"
+        rows="4"
+        placeholder="{{team.tab === 'notes' ? 'Registre informações importantes…' : 'Converse com a equipe sobre este atendimento…'}}"
+        ng-disabled="team.busy"
+      ></textarea>
+      <div class="team-form-actions">
+        <button
+          ng-if="team.editing"
+          type="button"
+          ng-click="team.editing = null; team.text = ''"
+        >
+          Cancelar edição
+        </button>
+        <button
+          type="submit"
+          ng-disabled="team.busy || !team.text.trim()"
+        >
+          {{team.busy ? 'Salvando…' : (team.editing ? 'Salvar alteração' : (team.tab === 'notes' ? 'Adicionar
+          nota' : 'Enviar internamente'))}}
+        </button>
+      </div>
+    </form>
+    <p
+      ng-if="team.loading"
+      class="team-private"
+      role="status"
+    >
+      Carregando…
+    </p>
+    <article
+      ng-repeat="entry in team.rows track by entry.id"
+      class="team-entry"
+      ng-class="{'is-pinned':entry.pinned}"
+    >
+      <header>
+        <strong>{{entry.authorName}}</strong>
+        <time>{{entry.createdAt | date:'dd/MM HH:mm'}}</time>
+      </header>
+      <span
+        ng-if="entry.pinned"
+        class="team-private"
+      >
+        Fixada
+      </span>
+      <p>{{entry.content}}</p>
+      <footer>
+        <button
+          ng-if="team.canEdit(entry)"
+          ng-click="team.edit(entry)"
+        >
+          Editar
+        </button>
+        <button
+          ng-if="team.canEdit(entry) && team.tab === 'notes'"
+          ng-click="team.pin(entry)"
+        >
+          {{entry.pinned ? 'Desafixar' : 'Fixar'}}
+        </button>
+        <button
+          ng-if="team.canEdit(entry)"
+          ng-click="team.remove(entry)"
+        >
+          Excluir
+        </button>
+        <button ng-click="team.history(entry)">Histórico</button>
+      </footer>
+    </article>
+    <p
+      ng-if="!team.loading && !team.rows.length"
+      class="team-empty"
+    >
+      {{team.tab === 'notes' ? 'Nenhuma nota neste atendimento.' : 'Nenhuma mensagem interna.'}}
+    </p>
+    <button
+      class="team-more"
+      ng-if="team.more"
+      ng-click="team.load(true)"
+      ng-disabled="team.loading"
+    >
+      Carregar anteriores
+    </button>
+  </div>
+  <app-modal
+    open="!!team.deleting"
+    title="Excluir registro interno"
+    busy="team.busy"
+    on-close="team.deleting = null"
+  >
+    <p>O registro será removido da visualização. O histórico de alterações será preservado.</p>
+    <button
+      class="mt-4 rounded-lg bg-red-700 px-4 py-2 text-white"
+      ng-click="team.confirmDelete()"
+    >
+      Confirmar exclusão
+    </button>
+  </app-modal>
+  <app-modal
+    open="!!team.revisions"
+    title="Histórico de alterações"
+    on-close="team.revisions = null"
+  >
+    <article
+      ng-repeat="revision in team.revisions"
+      class="mb-4 border-b border-slate-100 pb-4"
+    >
+      <small class="text-slate-400">{{revision.at | date:'dd/MM/yyyy HH:mm'}}</small>
+      <p class="whitespace-pre-wrap text-sm">{{revision.content}}</p>
+    </article>
+    <p ng-if="!team.revisions.length">Nenhuma edição registrada.</p>
+  </app-modal>
+</aside>

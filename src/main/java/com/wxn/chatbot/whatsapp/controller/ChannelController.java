@@ -7,7 +7,7 @@ import java.util.List;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/companies/{companyId}/whatsapp/channels")
+@RequestMapping("/api/whatsapp/channels")
 public class ChannelController {
 
     private final ChannelService service;
@@ -18,15 +18,12 @@ public class ChannelController {
 
     @PostMapping
     @ResponseStatus(org.springframework.http.HttpStatus.CREATED)
-    public ChannelDtos.Response create(
-        @PathVariable Long companyId,
-        @Valid @RequestBody ChannelDtos.Create request
-    ) {
-        return service.create(companyId, request);
+    public ChannelDtos.Response create(@Valid @RequestBody ChannelDtos.Create request) {
+        return service.create(request);
     }
 
     @GetMapping
-    public List<ChannelDtos.Response> list(@PathVariable Long companyId) {
-        return service.list(companyId);
+    public List<ChannelDtos.Response> list() {
+        return service.list();
     }
 }

@@ -8,11 +8,17 @@ import java.util.*;
 import org.bson.types.ObjectId;
 
 public interface ConversationOperations {
-    void initializeRevision(ObjectId id, Long companyId);
-    Optional<Conversation> updateDisplayName(ObjectId id, Long companyId, String displayName);
+    java.util.Optional<com.wxn.chatbot.conversation.document.Conversation> refreshPreview(
+        org.bson.types.ObjectId conversation,
+        org.bson.types.ObjectId message,
+        String preview
+    );
+    void linkContact(org.bson.types.ObjectId conversation, org.bson.types.ObjectId contact);
+    Optional<Conversation> updateDisplayName(ObjectId id, String displayName);
+    void recordDirection(ObjectId id, OffsetDateTime at, boolean inbound);
+
     Optional<Conversation> updateActivity(
         ObjectId id,
-        Long companyId,
         OffsetDateTime messageAt,
         ObjectId messageId,
         String preview
@@ -25,9 +31,8 @@ public interface ConversationOperations {
         OffsetDateTime closedAt,
         ConversationActivity activity
     );
-    void acknowledgeActivity(ObjectId id, Long companyId, ObjectId activityId);
+    void acknowledgeActivity(ObjectId id, ObjectId activityId);
     List<Conversation> search(
-        Long companyId,
         ConversationStatus status,
         Long assignedMemberId,
         boolean unassigned,

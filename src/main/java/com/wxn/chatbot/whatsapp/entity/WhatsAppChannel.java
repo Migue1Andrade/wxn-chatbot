@@ -14,9 +14,6 @@ public class WhatsAppChannel {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "company_id")
-    private Long companyId;
-
     @Column(name = "name")
     private String name;
 
@@ -46,14 +43,12 @@ public class WhatsAppChannel {
     protected WhatsAppChannel() {}
 
     public WhatsAppChannel(
-        Long companyId,
         String name,
         ProviderType provider,
         String phoneNumber,
         String externalChannelId,
         ActiveStatus status
     ) {
-        this.companyId = companyId;
         this.name = name;
         this.provider = provider;
         this.phoneNumber = phoneNumber;
@@ -64,10 +59,6 @@ public class WhatsAppChannel {
 
     public Long getId() {
         return id;
-    }
-
-    public Long getCompanyId() {
-        return companyId;
     }
 
     public String getName() {
@@ -100,5 +91,10 @@ public class WhatsAppChannel {
 
     public OffsetDateTime getDeletedAt() {
         return deletedAt;
+    }
+
+    public void updatePhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+        this.updatedAt = OffsetDateTime.now();
     }
 }

@@ -15,11 +15,13 @@ import '../features/chats/conversation-activities.service.js';
 import '../features/chats/conversation-read.service.js';
 import '../features/messages/messages.module.js';
 import '../features/messages/messages.service.js';
+import '../features/messages/message-actions.service.js';
 import '../features/messages/message-history.service.js';
 import '../features/messages/message-sending.service.js';
 import '../features/messages/message-read-context.service.js';
 import '../features/users/users.module.js';
 import '../features/users/users.service.js';
+import '../features/users/directives/user-directory.directive.js';
 import '../features/members/members.module.js';
 import '../features/members/members.service.js';
 import '../features/channels/channels.module.js';
@@ -43,6 +45,54 @@ import '../features/messages/directives/message-bubble.directive.js';
 import '../features/messages/directives/message-composer.directive.js';
 import '../shared/directives/loading-state.directive.js';
 import '../shared/directives/empty-state.directive.js';
+import '../features/settings/management.service.js';
+import '../features/settings/management.directive.js';
+import '../features/auth/session.service.js';
+import '../features/auth/login.directive.js';
+import '../features/auth/bootstrap.service.js';
+import '../features/auth/whatsapp-setup.directive.js';
+import '../features/auth/whatsapp-setup.css';
+import '../shared/directives/cpf-input.directive.js';
 import './app.module.js';
 import './app.routes.js';
 import '../shared/styles/main.css';
+import '../shared/styles/directory.css';
+
+import '../features/kanban/kanban.service.js';
+import '../features/kanban/kanban.directive.js';
+import '../features/kanban/kanban.css';
+
+import '../features/collaboration/team-panel.directive.js';
+import '../features/collaboration/team-panel.css';
+
+import '../features/quick-replies/quick-replies.directive.js';
+import '../features/dashboard/dashboard.directive.js';
+
+import '../features/sla/sla.directive.js';
+import '../features/reports/reports.directive.js';
+
+import '../features/tasks/tasks.directive.js';
+import '../features/notifications/notifications.js';
+
+import '../features/collaboration/draft.service.js';
+
+import '../shared/components/directory.directive.js';
+import '../features/departments/department-directory.directive.js';
+
+import '../features/settings/settings-hub.directive.js';
+import '../shared/components/focus-region.directive.js';
+import '../shared/styles/product.css';
+
+import '../features/tasks/tasks.service.js';
+import '../features/quick-replies/quick-replies.service.js';
+import '../features/sla/sla.service.js';
+import '../features/reports/reports.service.js';
+
+import '../features/settings/navigation.directive.js';
+
+import '../shared/components/error-state.directive.js';
+
+import '../shared/styles/workspace-polish.css';
+
+import '../features/channels/channels-page.directive.js';
+import '../features/channels/channels.css';

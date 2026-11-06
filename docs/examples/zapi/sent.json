@@ -1,0 +1,8 @@
+{
+  "instanceId": "SEU_INSTANCE_ID",
+  "phone": "5511888888888",
+  "messageId": "ID_EXTERNO_DA_SAIDA",
+  "zaapId": "ID_DE_RASTREAMENTO",
+  "momment": 1793206800000,
+  "type": "DeliveryCallback"
+}

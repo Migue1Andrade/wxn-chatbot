@@ -14,7 +14,7 @@ public final class ConversationMapper {
 
     public static Conversation individual(WhatsAppChannel channel, String phone, String key) {
         Conversation conversation = new Conversation();
-        conversation.setCompanyId(channel.getCompanyId());
+
         conversation.setChannelId(channel.getId());
         conversation.setProvider(channel.getProvider());
         conversation.setConversationKey(key);
@@ -24,7 +24,9 @@ public final class ConversationMapper {
         conversation.setStatus(ConversationStatus.PENDING.name());
         conversation.setCreatedAt(OffsetDateTime.now());
         conversation.setUpdatedAt(conversation.getCreatedAt());
+        conversation.setCycleStartedAt(conversation.getCreatedAt());
         conversation.setVersion(0L);
+        conversation.setPriority("NORMAL");
         return conversation;
     }
 
@@ -35,7 +37,6 @@ public final class ConversationMapper {
     public static NormalizedConversation response(Conversation c, Long unreadCount) {
         return new NormalizedConversation(
             c.getId().toHexString(),
-            c.getCompanyId(),
             c.getChannelId(),
             c.getProvider(),
             c.getExternalChatId(),
@@ -53,7 +54,8 @@ public final class ConversationMapper {
             unreadCount,
             c.getDisplayName() == null || c.getDisplayName().isBlank()
                 ? c.getContactPhone()
-                : c.getDisplayName()
+                : c.getDisplayName(),
+            c.getContactId() == null ? null : c.getContactId().toHexString()
         );
     }
 

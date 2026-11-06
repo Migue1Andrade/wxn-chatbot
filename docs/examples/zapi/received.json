@@ -1,0 +1,19 @@
+{
+  "instanceId": "SEU_INSTANCE_ID",
+  "connectedPhone": "5511999999999",
+  "phone": "5511888888888",
+  "messageId": "exemplo-texto-1",
+  "fromMe": false,
+  "fromApi": false,
+  "momment": 1793206800000,
+  "status": "RECEIVED",
+  "isGroup": false,
+  "isNewsletter": false,
+  "waitingMessage": false,
+  "isEdit": false,
+  "type": "ReceivedCallback",
+  "senderName": "Contato de exemplo",
+  "text": {
+    "message": "Olá, preciso de atendimento"
+  }
+}

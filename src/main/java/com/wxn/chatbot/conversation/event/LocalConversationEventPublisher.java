@@ -14,22 +14,12 @@ public class LocalConversationEventPublisher implements ConversationEventPublish
         this.publisher = publisher;
     }
 
-    public void publish(String type, Long companyId, CanonicalEventPayload payload) {
-        if (!ConversationEventTypes.ALL.contains(type)) throw new IllegalArgumentException(
-            "Tipo de evento inválido"
-        );
-        if (!Objects.equals(companyId, payload.companyId())) throw new IllegalArgumentException(
-            "Tenant do evento inválido"
-        );
+    public void publish(String type, CanonicalEventPayload payload) {
+        if (!ConversationEventTypes.ALL.contains(type)) {
+            throw new IllegalArgumentException("Tipo de evento inválido");
+        }
         publisher.publishEvent(
-            new ConversationEvent(
-                UUID.randomUUID(),
-                type,
-                companyId,
-                payload.conversationId(),
-                Instant.now(),
-                payload
-            )
+            new ConversationEvent(UUID.randomUUID(), type, payload.conversationId(), Instant.now(), payload)
         );
     }
 }

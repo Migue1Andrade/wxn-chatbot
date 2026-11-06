@@ -1,7 +1,6 @@
 package com.wxn.chatbot.conversation.service;
 
 import com.wxn.chatbot.common.ApiException;
-import com.wxn.chatbot.company.service.CompanyService;
 import com.wxn.chatbot.conversation.document.Conversation;
 import com.wxn.chatbot.conversation.dto.*;
 import com.wxn.chatbot.conversation.mapper.ConversationMapper;
@@ -16,56 +15,52 @@ public class ConversationQueryService {
 
     private final ConversationActivityService activities;
     private final ConversationRepository repository;
-    private final CompanyService companies;
     private final MemberService members;
     private final ConversationReadService reads;
 
     public ConversationQueryService(
         ConversationRepository repository,
-        CompanyService companies,
         MemberService members,
         ConversationReadService reads,
         ConversationActivityService activities
     ) {
         this.activities = activities;
         this.repository = repository;
-        this.companies = companies;
+
         this.members = members;
         this.reads = reads;
     }
 
-    public List<NormalizedConversation> list(Long companyId, ConversationQuery query) {
-        return responses(
-            companyId,
-            query.readerMemberId(),
-            search(companyId, query, query.pageSize(100), false)
-        );
+    public List<NormalizedConversation> list(ConversationQuery query) {
+        return responses(query.readerMemberId(), search(query, query.pageSize(100), false));
     }
 
-    public ConversationPage page(Long companyId, ConversationQuery query) {
+    public ConversationPage page(ConversationQuery query) {
         int size = query.pageSize(30);
-        var rows = new ArrayList<>(search(companyId, query, size, true));
+        var rows = new ArrayList<>(search(query, size, true));
         boolean more = rows.size() > size;
-        if (more) rows.remove(rows.size() - 1);
+        if (more) {
+            rows.remove(rows.size() - 1);
+        }
         return new ConversationPage(
-            responses(companyId, query.readerMemberId(), rows),
+            responses(query.readerMemberId(), rows),
             more ? query.pageNumber() + 1 : null,
             more
         );
     }
 
-    private List<Conversation> search(Long companyId, ConversationQuery query, int size, boolean probe) {
-        companies.require(companyId);
+    private List<Conversation> search(ConversationQuery query, int size, boolean probe) {
         ConversationService.page(query.pageNumber(), size);
-        if (query.assignedMemberId() != null) members.require(companyId, query.assignedMemberId());
-        if (query.onlyUnassigned() && query.assignedMemberId() != null) throw ApiException.badRequest(
-            "Filtros de responsável incompatíveis"
-        );
-        if (query.search() != null && query.search().length() > 100) throw ApiException.badRequest(
-            "Busca deve ter até 100 caracteres"
-        );
+        if (query.assignedMemberId() != null) {
+            members.require(query.assignedMemberId());
+        }
+        if (query.onlyUnassigned() && query.assignedMemberId() != null) {
+            throw ApiException.badRequest("Filtros de responsável incompatíveis");
+        }
+        if (query.search() != null && query.search().length() > 100) {
+            throw ApiException.badRequest("Busca deve ter até 100 caracteres");
+        }
         return repository.search(
-            companyId,
             query.status(),
             query.assignedMemberId(),
             query.onlyUnassigned(),
@@ -76,10 +71,9 @@ public class ConversationQueryService {
         );
     }
 
-    private List<NormalizedConversation> responses(Long companyId, Long reader, List<Conversation> rows) {
+    private List<NormalizedConversation> responses(Long reader, List<Conversation> rows) {
         rows.forEach(activities::flush);
-        var counts =
-            reader == null ? Map.<org.bson.types.ObjectId, Long>of() : reads.counts(companyId, reader, rows);
+        var counts = reader == null ? Map.<org.bson.types.ObjectId, Long>of() : reads.counts(reader, rows);
         return rows
             .stream()
             .map(conversation ->

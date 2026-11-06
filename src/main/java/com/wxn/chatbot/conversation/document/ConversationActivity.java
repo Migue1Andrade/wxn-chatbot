@@ -12,7 +12,6 @@ public class ConversationActivity {
     @Id
     private ObjectId id;
 
-    private Long companyId;
     private ObjectId conversationId;
     private String eventKey;
     private ConversationActivityType event;
@@ -25,7 +24,6 @@ public class ConversationActivity {
     protected ConversationActivity() {}
 
     public ConversationActivity(
-        Long companyId,
         ObjectId conversationId,
         String eventKey,
         ConversationActivityType event,
@@ -36,7 +34,7 @@ public class ConversationActivity {
         OffsetDateTime createdAt
     ) {
         this.id = new ObjectId();
-        this.companyId = companyId;
+
         this.conversationId = conversationId;
         this.eventKey = eventKey;
         this.event = event;
@@ -53,10 +51,6 @@ public class ConversationActivity {
 
     public ObjectId getId() {
         return id;
-    }
-
-    public Long getCompanyId() {
-        return companyId;
     }
 
     public ObjectId getConversationId() {

@@ -35,64 +35,42 @@ public class ConversationReadService {
         this.events = events;
     }
 
-    public void requireReader(Long companyId, Long memberId) {
-        members.requireHumanActive(companyId, memberId);
+    public void requireReader(Long memberId) {
+        members.requireHumanActive(memberId);
     }
 
-    public Map<ObjectId, Long> counts(Long companyId, Long memberId, List<Conversation> rows) {
-        requireReader(companyId, memberId);
+    public Map<ObjectId, Long> counts(Long memberId, List<Conversation> rows) {
+        requireReader(memberId);
         var ids = rows.stream().map(Conversation::getId).toList();
-        return reads.unreadCounts(
-            companyId,
-            ids,
-            reads.findByCompanyIdAndMemberIdAndConversationIdIn(companyId, memberId, ids)
-        );
+        return reads.unreadCounts(ids, reads.findByMemberIdAndConversationIdIn(memberId, ids));
     }
 
-    public ReadUpdate mark(Long companyId, String id, Read request) {
-        Conversation conversation = conversations.require(companyId, id);
-        requireReader(companyId, request.memberId());
-        if (!ObjectId.isValid(request.throughMessageId())) throw ApiException.badRequest(
-            "throughMessageId inválido"
-        );
+    public ReadUpdate mark(String id, Read request) {
+        Conversation conversation = conversations.require(id);
+        requireReader(request.memberId());
+        if (!ObjectId.isValid(request.throughMessageId())) {
+            throw ApiException.badRequest("throughMessageId inválido");
+        }
         var message = messages
-            .findByIdAndCompanyIdAndConversationId(
-                new ObjectId(request.throughMessageId()),
-                companyId,
-                conversation.getId()
-            )
+            .findByIdAndConversationId(new ObjectId(request.throughMessageId()), conversation.getId())
             .orElseThrow(() -> ApiException.notFound("Mensagem não encontrada na conversa"));
-        var changed = reads.advance(
-            companyId,
-            conversation.getId(),
-            request.memberId(),
-            MessageCursor.of(message)
-        );
+        var changed = reads.advance(conversation.getId(), request.memberId(), MessageCursor.of(message));
         var current = changed.orElseGet(() ->
-            reads
-                .findByCompanyIdAndMemberIdAndConversationIdIn(
-                    companyId,
-                    request.memberId(),
-                    List.of(conversation.getId())
-                )
-                .get(0)
+            reads.findByMemberIdAndConversationIdIn(request.memberId(), List.of(conversation.getId())).get(0)
         );
         long count = reads
-            .unreadCounts(companyId, List.of(conversation.getId()), List.of(current))
+            .unreadCounts(List.of(conversation.getId()), List.of(current))
             .getOrDefault(conversation.getId(), 0L);
         var response = new ReadUpdate(
-            companyId,
             id,
             request.memberId(),
             current.getThroughMessageId().toHexString(),
             current.getLastReadAt().toInstant(),
             count
         );
-        if (changed.isPresent()) events.publish(
-            ConversationEventTypes.CONVERSATION_READ_UPDATED,
-            companyId,
-            response
-        );
+        if (changed.isPresent()) {
+            events.publish(ConversationEventTypes.CONVERSATION_READ_UPDATED, response);
+        }
         return response;
     }
 }

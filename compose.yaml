@@ -6,18 +6,160 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:?Defina POSTGRES_USER no ambiente ou em um arquivo .env local}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no ambiente ou em um arquivo .env local}
     ports:
-      - "${POSTGRES_PORT:-4003}:5432"
+      - '${POSTGRES_PORT:-4003}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   mongodb:
     image: mongo:8
     environment:
       MONGO_INITDB_DATABASE: ${MONGO_DB:?Defina MONGO_DB no ambiente ou em um arquivo .env local}
     ports:
-      - "${MONGO_PORT:-4004}:27017"
+      - '${MONGO_PORT:-4004}:27017'
     volumes:
       - mongo_data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', 'db.runCommand({ ping: 1 }).ok']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      evolution-api:
+        condition: service_healthy
+    ports:
+      - '${BACKEND_PORT:-4001}:4001'
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      BACKEND_PORT: 4001
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      MONGODB_URI: mongodb://mongodb:27017/${MONGO_DB}
+      DEV_API_KEY: ${DEV_API_KEY:?Defina DEV_API_KEY no ambiente ou .env}
+      FRONTEND_ORIGIN: http://localhost:${FRONTEND_PORT:-4002}
+      EVOLUTION_API_URL: http://evolution-api:8080
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:?Defina EVOLUTION_API_KEY no ambiente ou .env}
+      EVOLUTION_INSTANCE_NAME: ${EVOLUTION_INSTANCE_NAME:-wxn-local}
+      EVOLUTION_WEBHOOK_URL: http://backend:4001/api/webhooks/evolution
+      EVOLUTION_WEBHOOK_SECRET: ${EVOLUTION_WEBHOOK_SECRET:?Defina EVOLUTION_WEBHOOK_SECRET no ambiente ou .env}
+      EVOLUTION_ALLOW_HTTP: 'true'
+      WXN_BOOTSTRAP_TOKEN: ${WXN_BOOTSTRAP_TOKEN:?Defina WXN_BOOTSTRAP_TOKEN no ambiente ou .env}
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'wget -q --header="X-Dev-Api-Key: $${DEV_API_KEY}" -O /dev/null http://localhost:4001/api/auth/session',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:${BACKEND_PORT:-4001}
+        VITE_WS_URL: ws://localhost:${BACKEND_PORT:-4001}/ws
+        VITE_DEV_API_KEY: ${VITE_DEV_API_KEY:-${DEV_API_KEY}}
+        VITE_SKIP_WHATSAPP_SETUP: ${VITE_SKIP_WHATSAPP_SETUP:-false}
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - '${FRONTEND_PORT:-4002}:80'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost/']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  evolution-postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${EVOLUTION_POSTGRES_DB:-evolution}
+      POSTGRES_USER: ${EVOLUTION_POSTGRES_USER:-evolution}
+      POSTGRES_PASSWORD: ${EVOLUTION_POSTGRES_PASSWORD:?Defina EVOLUTION_POSTGRES_PASSWORD no ambiente ou .env}
+    expose:
+      - '5432'
+    volumes:
+      - evolution_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U $${EVOLUTION_POSTGRES_USER:-evolution} -d $${EVOLUTION_POSTGRES_DB:-evolution}',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  evolution-redis:
+    image: redis:7-alpine
+    expose:
+      - '6379'
+    volumes:
+      - evolution_redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  evolution-api:
+    image: evoapicloud/evolution-api:v2.3.7
+    depends_on:
+      evolution-postgres:
+        condition: service_healthy
+      evolution-redis:
+        condition: service_healthy
+    ports:
+      - '${EVOLUTION_PORT:-8080}:8080'
+    environment:
+      SERVER_URL: ${EVOLUTION_SERVER_URL:-http://localhost:8080}
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:?Defina EVOLUTION_API_KEY no ambiente ou .env}
+      DATABASE_ENABLED: 'true'
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://${EVOLUTION_POSTGRES_USER:-evolution}:${EVOLUTION_POSTGRES_PASSWORD}@evolution-postgres:5432/${EVOLUTION_POSTGRES_DB:-evolution}
+      DATABASE_CONNECTION_CLIENT_NAME: evolution_wxn
+      DATABASE_SAVE_DATA_INSTANCE: 'true'
+      DATABASE_SAVE_DATA_NEW_MESSAGE: 'false'
+      DATABASE_SAVE_MESSAGE_UPDATE: 'false'
+      DATABASE_SAVE_DATA_CONTACTS: 'false'
+      DATABASE_SAVE_DATA_CHATS: 'false'
+      DATABASE_SAVE_DATA_LABELS: 'false'
+      DATABASE_SAVE_DATA_HISTORIC: 'false'
+      CACHE_REDIS_ENABLED: 'true'
+      CACHE_REDIS_URI: redis://evolution-redis:6379/1
+      CACHE_REDIS_PREFIX_KEY: evolution_wxn
+      CACHE_REDIS_SAVE_INSTANCES: 'true'
+      CACHE_LOCAL_ENABLED: 'false'
+      WEBHOOK_GLOBAL_ENABLED: 'false'
+      CONFIG_SESSION_PHONE_CLIENT: WXN Chatbot
+      CONFIG_SESSION_PHONE_NAME: Chrome
+      QRCODE_LIMIT: '30'
+      LANGUAGE: pt_BR
+    volumes:
+      - evolution_instances:/evolution/instances
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q --spider http://localhost:8080/ || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
 volumes:
   postgres_data:
@@ -26,3 +168,9 @@ volumes:
   mongo_data:
     name: ${MONGO_VOLUME:-wxn-chatbot_mongo_data}
     external: ${DATABASE_VOLUMES_EXTERNAL:-false}
+  evolution_postgres_data:
+    name: ${EVOLUTION_POSTGRES_VOLUME:-wxn-chatbot_evolution_postgres_data}
+  evolution_redis_data:
+    name: ${EVOLUTION_REDIS_VOLUME:-wxn-chatbot_evolution_redis_data}
+  evolution_instances:
+    name: ${EVOLUTION_INSTANCES_VOLUME:-wxn-chatbot_evolution_instances}

@@ -1,0 +1,182 @@
+<div class="flex min-h-screen bg-slate-50 text-slate-800">
+  <management-navigation></management-navigation>
+  <main class="product-page mx-auto min-w-0 w-full max-w-6xl p-6 sm:p-10">
+    <header class="mb-8 flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-semibold">Atividades</h1>
+        <p class="mt-2 text-sm text-slate-500">Tarefas, acompanhamentos e lembretes da operação.</p>
+      </div>
+      <button
+        ng-click="vm.edit()"
+        class="rounded-lg bg-teal-700 px-4 py-2 text-sm text-white"
+      >
+        Nova atividade
+      </button>
+    </header>
+    <p
+      ng-if="vm.notice"
+      class="product-success"
+      role="status"
+    >
+      {{vm.notice}}
+    </p>
+    <error-state
+      ng-if="vm.error"
+      message="{{vm.error}}"
+      on-retry="vm.load()"
+    ></error-state>
+    <select
+      ng-model="vm.status"
+      ng-change="vm.load()"
+      aria-label="Status das atividades"
+      class="mb-5 rounded-lg border border-slate-200 bg-white p-3 text-sm"
+    >
+      <option value="OPEN">Em aberto</option>
+      <option value="COMPLETED">Concluídas</option>
+      <option value="CANCELLED">Canceladas</option>
+      <option value="">Todas</option>
+    </select>
+    <table-skeleton ng-if="vm.loading"></table-skeleton>
+    <section
+      ng-if="!vm.loading"
+      class="space-y-3"
+    >
+      <article
+        ng-repeat="task in vm.rows track by task.id"
+        class="rounded-xl border border-slate-200 bg-white p-5"
+      >
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <span class="text-[10px] uppercase tracking-wide text-slate-400">
+              {{vm.types[task.type]}} · {{vm.priorities[task.priority]}}
+            </span>
+            <h2 class="mt-2 text-sm font-semibold">{{task.title}}</h2>
+            <p class="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-500">{{task.description}}</p>
+            <p
+              class="mt-3 text-xs"
+              ng-class="vm.overdue(task) ? 'text-red-700' : 'text-slate-400'"
+            >
+              {{vm.overdue(task) ? 'Vencida · ' : ''}}{{task.dueAt | date:'dd/MM/yyyy HH:mm'}} ·
+              {{vm.userName(task.assignedUserId)}}
+            </p>
+          </div>
+          <div class="flex gap-4 text-xs text-teal-700">
+            <button ng-click="vm.edit(task)">Editar</button>
+            <button
+              ng-if="task.status === 'OPEN'"
+              ng-disabled="vm.busy"
+              ng-click="vm.finish(task, 'COMPLETED')"
+            >
+              Concluir
+            </button>
+            <button
+              ng-if="task.status === 'OPEN'"
+              ng-disabled="vm.busy"
+              ng-click="vm.finish(task, 'CANCELLED')"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+        <a
+          ng-if="task.conversationId"
+          href="#!/?conversation={{task.conversationId}}"
+          class="mt-4 inline-block text-xs text-teal-700"
+        >
+          Abrir conversa (sujeito à permissão) ↗
+        </a>
+      </article>
+    </section>
+    <p
+      ng-if="!vm.rows.length && !vm.loading"
+      class="py-16 text-center text-sm text-slate-400"
+    >
+      Nenhuma atividade encontrada.
+    </p>
+    <button
+      ng-if="vm.more"
+      ng-click="vm.load(true)"
+      class="mt-6 text-sm text-teal-700"
+    >
+      Carregar mais
+    </button>
+  </main>
+  <app-modal
+    open="!!vm.form"
+    title="Atividade"
+    busy="vm.busy"
+    on-close="vm.form = null"
+  >
+    <form
+      ng-submit="vm.save()"
+      class="space-y-4"
+    >
+      <p
+        ng-if="vm.error"
+        class="text-sm text-red-700"
+        role="alert"
+      >
+        {{vm.error}}
+      </p>
+      <label class="block text-sm">
+        Título
+        <input
+          ng-model="vm.form.title"
+          required
+          maxlength="200"
+          class="mt-1 w-full rounded-lg border border-slate-200 p-2"
+        />
+      </label>
+      <label class="block text-sm">
+        Descrição
+        <textarea
+          ng-model="vm.form.description"
+          maxlength="5000"
+          rows="3"
+          class="mt-1 w-full rounded-lg border border-slate-200 p-2"
+        ></textarea>
+      </label>
+      <label class="block text-sm">
+        Tipo
+        <select
+          ng-model="vm.form.type"
+          ng-options="key as label for (key,label) in vm.types"
+          class="mt-1 w-full rounded-lg border border-slate-200 p-2"
+        ></select>
+      </label>
+      <label class="block text-sm">
+        Responsável
+        <select
+          ng-model="vm.form.assignedUserId"
+          ng-options="user.id as user.name for user in vm.users"
+          required
+          class="mt-1 w-full rounded-lg border border-slate-200 p-2"
+        ></select>
+      </label>
+      <label class="block text-sm">
+        Prazo
+        <input
+          type="datetime-local"
+          ng-model="vm.form.dueAt"
+          required
+          class="mt-1 w-full rounded-lg border border-slate-200 p-2"
+        />
+      </label>
+      <label class="block text-sm">
+        Prioridade
+        <select
+          ng-model="vm.form.priority"
+          ng-options="key as label for (key,label) in vm.priorities"
+          class="mt-1 w-full rounded-lg border border-slate-200 p-2"
+        ></select>
+      </label>
+      <button
+        type="submit"
+        ng-disabled="vm.busy"
+        class="rounded-lg bg-teal-700 px-4 py-2 text-white"
+      >
+        Salvar
+      </button>
+    </form>
+  </app-modal>
+</div>

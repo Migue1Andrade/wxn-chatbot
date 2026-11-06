@@ -16,11 +16,15 @@ angular.module('wxn.messages').factory('MessageReadContextService', [
         const state = { error: null };
         function mark() {
           const member = members.state.member;
-          if (!member || !visibleId || document.visibilityState !== 'visible' || disposed) return;
+          if (!member || !visibleId || document.visibilityState !== 'visible' || disposed) {
+            return;
+          }
           const id = conversationId;
           const anchor = visibleId;
           const key = member.id + ':' + id + ':' + anchor;
-          if (key === marked || pending.has(key)) return;
+          if (key === marked || pending.has(key)) {
+            return;
+          }
           pending.add(key);
           state.error = null;
           return reads
@@ -31,16 +35,21 @@ angular.module('wxn.messages').factory('MessageReadContextService', [
                 id === conversationId &&
                 members.state.member?.id === member.id &&
                 visibleId === anchor
-              )
+              ) {
                 marked = key;
+              }
               bus.emit(events.READ_UPDATED, { conversationId: id, payload });
             })
             .catch((error) => {
-              if (disposed || id !== conversationId || members.state.member?.id !== member.id) return;
+              if (disposed || id !== conversationId || members.state.member?.id !== member.id) {
+                return;
+              }
               state.error =
                 'Não foi possível confirmar a leitura. ' +
                 (error.userMessage || 'Tente atualizar o histórico.');
-              if (marked === key) marked = null;
+              if (marked === key) {
+                marked = null;
+              }
             })
             .finally(() => {
               pending.delete(key);

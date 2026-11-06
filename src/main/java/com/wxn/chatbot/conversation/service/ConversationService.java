@@ -1,7 +1,6 @@
 package com.wxn.chatbot.conversation.service;
 
 import com.wxn.chatbot.common.ApiException;
-import com.wxn.chatbot.company.service.CompanyService;
 import com.wxn.chatbot.conversation.document.Conversation;
 import com.wxn.chatbot.conversation.event.*;
 import com.wxn.chatbot.conversation.mapper.ConversationMapper;
@@ -21,64 +20,60 @@ public class ConversationService {
 
     private static final int MAX_REOPEN_ATTEMPTS = 8;
     private static final int PREVIEW_LENGTH = 160;
+    private final ConversationWriteCoordinator writes;
+    private final com.wxn.chatbot.contact.ContactRegistry contacts;
     private final ConversationRepository repository;
-    private final CompanyService companies;
     private final ConversationEventPublisher events;
     private final ConversationActivityService activities;
     private final ConversationTransitionService transitions;
 
     public ConversationService(
         ConversationRepository repository,
-        CompanyService companies,
         ConversationEventPublisher events,
         ConversationActivityService activities,
-        ConversationTransitionService transitions
+        ConversationTransitionService transitions,
+        com.wxn.chatbot.contact.ContactRegistry contacts,
+        ConversationWriteCoordinator writes
     ) {
+        this.writes = writes;
+        this.contacts = contacts;
         this.repository = repository;
-        this.companies = companies;
+
         this.events = events;
         this.activities = activities;
         this.transitions = transitions;
     }
 
-    public Conversation require(Long companyId, String id) {
-        companies.require(companyId);
-        if (!ObjectId.isValid(id)) throw ApiException.badRequest("conversationId inválido");
+    public <T> T withWriteLock(String id, java.util.function.Supplier<T> operation) {
+        return writes.execute(id, operation);
+    }
+
+    public Conversation require(String id) {
+        if (!ObjectId.isValid(id)) {
+            throw ApiException.badRequest("conversationId inválido");
+        }
         Conversation conversation = repository
-            .findByIdAndCompanyId(new ObjectId(id), companyId)
-            .orElseThrow(() -> ApiException.notFound("Conversa não encontrada na empresa"));
-        normalizeRevision(conversation);
+            .findById(new ObjectId(id))
+            .orElseThrow(() -> ApiException.notFound("Conversa não encontrada"));
         activities.flush(conversation);
         return conversation;
     }
 
-    public NormalizedConversation get(Long companyId, String id) {
-        return ConversationMapper.response(require(companyId, id));
-    }
-
-    public List<NormalizedConversation> list(Long companyId, int page, int size) {
-        companies.require(companyId);
-        return repository
-            .findByCompanyIdOrderByUpdatedAtDesc(companyId, page(page, size))
-            .stream()
-            .map(ConversationMapper::response)
-            .toList();
+    public NormalizedConversation get(String id) {
+        return ConversationMapper.response(require(id));
     }
 
     public Conversation individual(WhatsAppChannel channel, String phone) {
         String key = "individual:" + phone;
         Conversation conversation = repository
-            .findByCompanyIdAndChannelIdAndConversationKey(channel.getCompanyId(), channel.getId(), key)
+            .findByChannelIdAndConversationKey(channel.getId(), key)
             .orElseGet(() -> create(channel, phone, key));
-        normalizeRevision(conversation);
-        return conversation;
-    }
-
-    private void normalizeRevision(Conversation conversation) {
-        if (conversation.getVersion() == null) {
-            repository.initializeRevision(conversation.getId(), conversation.getCompanyId());
-            conversation.setVersion(0L);
+        if (conversation.getContactId() == null) {
+            var contactId = contacts.resolve(channel.getId(), phone);
+            repository.linkContact(conversation.getId(), contactId);
+            conversation.setContactId(contactId);
         }
+        return conversation;
     }
 
     private Conversation create(WhatsAppChannel channel, String phone, String key) {
@@ -101,50 +96,118 @@ public class ConversationService {
             conversation = repository.insert(conversation);
         } catch (DuplicateKeyException concurrent) {
             return repository
-                .findByCompanyIdAndChannelIdAndConversationKey(channel.getCompanyId(), channel.getId(), key)
+                .findByChannelIdAndConversationKey(channel.getId(), key)
                 .orElseThrow(() -> concurrent);
         }
         activities.flush(conversation);
         events.publish(
             ConversationEventTypes.CONVERSATION_CREATED,
-            conversation.getCompanyId(),
             ConversationMapper.response(conversation)
         );
         return conversation;
     }
 
     public void updateContact(Conversation conversation, String name) {
-        if (name == null || name.isBlank()) return;
+        if (name == null || name.isBlank()) {
+            return;
+        }
+        contacts.observe(conversation.getContactId(), name);
         String trimmed = name.trim();
-        if (trimmed.length() > 200) trimmed = trimmed.substring(0, 200);
+        if (trimmed.length() > 200) {
+            trimmed = trimmed.substring(0, 200);
+        }
         repository
-            .updateDisplayName(conversation.getId(), conversation.getCompanyId(), trimmed)
+            .updateDisplayName(conversation.getId(), trimmed)
             .ifPresent(updated ->
                 events.publish(
                     ConversationEventTypes.CONVERSATION_UPDATED,
-                    updated.getCompanyId(),
+                    ConversationMapper.response(updated)
+                )
+            );
+    }
+
+    public void refreshPreview(Message message) {
+        String preview =
+            message.getDeletedAt() != null
+                ? "Mensagem apagada"
+                : message.getContent() == null
+                  ? ""
+                  : message.getContent().getString("text");
+        if (preview == null) {
+            preview = "";
+        }
+        repository
+            .refreshPreview(
+                message.getConversationId(),
+                message.getId(),
+                preview.substring(0, Math.min(PREVIEW_LENGTH, preview.length()))
+            )
+            .ifPresent(updated ->
+                events.publish(
+                    ConversationEventTypes.CONVERSATION_UPDATED,
                     ConversationMapper.response(updated)
                 )
             );
     }
 
     public void touch(Conversation conversation, Message message) {
-        if (Direction.INBOUND.name().equals(message.getDirection())) reopenForInbound(conversation, message);
-        String preview = message.getContent() == null ? null : message.getContent().getString("text");
-        if (preview == null || preview.isBlank()) preview = "Anexo recebido";
-        if (preview.length() > PREVIEW_LENGTH) preview = preview.substring(0, PREVIEW_LENGTH);
-        repository
-            .updateActivity(
+        if (Direction.INBOUND.name().equals(message.getDirection())) {
+            Conversation current = repository.findById(conversation.getId()).orElseThrow();
+            if (
+                current.operationalStatus() == ConversationStatus.WAITING_CUSTOMER &&
+                (current.getLastOutboundAt() == null ||
+                    !message.getCreatedAt().isBefore(current.getLastOutboundAt()))
+            ) {
+                transitions.attempt(
+                    current,
+                    current.revision(),
+                    new ConversationTransition(
+                        ConversationStatus.IN_PROGRESS,
+                        current.getAssignedMemberId(),
+                        null,
+                        ConversationActivityType.CONVERSATION_STATUS_CHANGED,
+                        null,
+                        "Cliente retornou",
+                        ConversationEventTypes.CONVERSATION_UPDATED
+                    )
+                );
+            }
+        }
+        if (
+            Direction.INBOUND.name().equals(message.getDirection()) ||
+            java.util.Set.of(
+                NormalizedMessageStatus.SENT,
+                NormalizedMessageStatus.DELIVERED,
+                NormalizedMessageStatus.READ,
+                NormalizedMessageStatus.SIMULATED
+            ).contains(message.getStatus())
+        ) {
+            repository.recordDirection(
                 conversation.getId(),
-                conversation.getCompanyId(),
                 message.getCreatedAt(),
-                message.getId(),
-                preview
-            )
+                Direction.INBOUND.name().equals(message.getDirection())
+            );
+        }
+        if (Direction.INBOUND.name().equals(message.getDirection())) {
+            reopenForInbound(conversation, message);
+        }
+        String preview =
+            message.getDeletedAt() != null
+                ? "Mensagem apagada"
+                : message.getContent() == null
+                  ? null
+                  : message.getContent().getString("text");
+        if (preview == null || preview.isBlank()) {
+            preview = "Anexo recebido";
+        }
+        if (preview.length() > PREVIEW_LENGTH) {
+            preview = preview.substring(0, PREVIEW_LENGTH);
+        }
+        repository
+            .updateActivity(conversation.getId(), message.getCreatedAt(), message.getId(), preview)
             .ifPresent(updated ->
                 events.publish(
                     ConversationEventTypes.CONVERSATION_UPDATED,
-                    updated.getCompanyId(),
                     ConversationMapper.response(updated)
                 )
             );
@@ -152,15 +215,21 @@ public class ConversationService {
 
     private void reopenForInbound(Conversation conversation, Message message) {
         for (int attempt = 0; attempt < MAX_REOPEN_ATTEMPTS; attempt++) {
-            Conversation current = repository
-                .findByIdAndCompanyId(conversation.getId(), conversation.getCompanyId())
-                .orElseThrow();
-            if (current.operationalStatus() != ConversationStatus.CLOSED) return;
+            Conversation current = repository.findById(conversation.getId()).orElseThrow();
             if (
-                current.getClosedAt() != null &&
+                current.operationalStatus() != ConversationStatus.CLOSED &&
+                current.operationalStatus() != ConversationStatus.RESOLVED
+            ) {
+                return;
+            }
+            var completedAt = current.getClosedAt() != null ? current.getClosedAt() : current.getResolvedAt();
+            if (
+                completedAt != null &&
                 message.getCreatedAt() != null &&
-                message.getCreatedAt().isBefore(current.getClosedAt())
-            ) return;
+                message.getCreatedAt().isBefore(completedAt)
+            ) {
+                return;
+            }
             var transition = new ConversationTransition(
                 ConversationStatus.PENDING,
                 null,
@@ -170,15 +239,17 @@ public class ConversationService {
                 null,
                 ConversationEventTypes.CONVERSATION_REOPENED
             );
-            if (transitions.attempt(current, current.revision(), transition).isPresent()) return;
+            if (transitions.attempt(current, current.revision(), transition).isPresent()) {
+                return;
+            }
         }
         throw ApiException.conflict("Conversa alterada simultaneamente; não foi possível reabri-la");
     }
 
     public static PageRequest page(int page, int size) {
-        if (page < 0 || size < 1 || size > 200) throw ApiException.badRequest(
-            "page >= 0; size entre 1 e 200"
-        );
+        if (page < 0 || size < 1 || size > 200) {
+            throw ApiException.badRequest("page >= 0; size entre 1 e 200");
+        }
         return PageRequest.of(page, size);
     }
 }

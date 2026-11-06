@@ -6,22 +6,33 @@ const rank = {
   DELIVERED: 3,
   READ: 4,
   FAILED: 5,
-  SIMULATED: 5,
+  SIMULATED: 1,
   RECEIVED: 5,
 };
 export function mergeMessages(current, incoming) {
   const map = new Map(current.map((message) => [message.id, message]));
   for (const row of incoming) {
-    if (!row.id) continue;
+    if (!row.id) {
+      continue;
+    }
     const previous = map.get(row.id);
     if (!previous) {
       map.set(row.id, row);
       continue;
     }
+    if (Number.isFinite(row.version) && Number.isFinite(previous.version)) {
+      if (row.version > previous.version) {
+        map.set(row.id, { ...previous, ...row });
+      }
+      if (row.version !== previous.version) {
+        continue;
+      }
+    }
     const before = Date.parse(previous.updatedAt || previous.createdAt) || 0;
     const after = Date.parse(row.updatedAt || row.createdAt) || 0;
-    if (after > before || (after === before && (rank[row.status] || 0) >= (rank[previous.status] || 0)))
+    if (after > before || (after === before && (rank[row.status] || 0) >= (rank[previous.status] || 0))) {
       map.set(row.id, { ...previous, ...row });
+    }
   }
   return [...map.values()].sort(
     (a, b) => (Date.parse(a.createdAt) || 0) - (Date.parse(b.createdAt) || 0) || a.id.localeCompare(b.id),

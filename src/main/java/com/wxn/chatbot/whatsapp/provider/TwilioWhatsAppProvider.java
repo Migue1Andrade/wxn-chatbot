@@ -13,9 +13,11 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
+@Profile("legacy")
 public class TwilioWhatsAppProvider implements WhatsAppProvider, WhatsAppStatusNormalizer {
 
     private final TwilioProperties config;
@@ -28,6 +30,10 @@ public class TwilioWhatsAppProvider implements WhatsAppProvider, WhatsAppStatusN
         return ProviderType.TWILIO;
     }
 
+    public java.util.Set<MessageCapability> messageCapabilities() {
+        return java.util.Set.of(MessageCapability.SEND_TEXT, MessageCapability.MESSAGE_STATUS);
+    }
+
     public ProviderCapabilities capabilities() {
         return new ProviderCapabilities(true, false, false, true, false);
     }
@@ -35,7 +41,6 @@ public class TwilioWhatsAppProvider implements WhatsAppProvider, WhatsAppStatusN
     public void validateChannel(WhatsAppChannel channel) {
         config.requireConfigured();
         if (
-            !config.getCompanyId().equals(channel.getCompanyId()) ||
             !config.getChannelId().equals(channel.getId()) ||
             channel.getProvider() != type() ||
             !PhoneNumbers.required(config.getPhoneNumber()).equals(channel.getPhoneNumber())
@@ -48,7 +53,7 @@ public class TwilioWhatsAppProvider implements WhatsAppProvider, WhatsAppStatusN
 
     public SendMessageResult send(WhatsAppChannel channel, SendMessageRequest request) {
         validateChannel(channel);
-        // Per-client credentials: no global Twilio.init(), tenant or request credential selection.
+        // Use explicit channel credentials instead of global Twilio.init().
         TwilioRestClient client = new TwilioRestClient.Builder(
             config.getAccountSid(),
             config.getAuthToken()
@@ -97,7 +102,9 @@ public class TwilioWhatsAppProvider implements WhatsAppProvider, WhatsAppStatusN
 
     public NormalizedStatusEvent normalizeStatus(Map<String, String> payload) {
         String code = payload.get("ErrorCode");
-        if (code != null && !code.matches("[0-9]{1,10}")) code = "UNKNOWN";
+        if (code != null && !code.matches("[0-9]{1,10}")) {
+            code = "UNKNOWN";
+        }
         return new NormalizedStatusEvent(
             required(payload, "MessageSid"),
             status(required(payload, "MessageStatus")),
@@ -118,16 +125,18 @@ public class TwilioWhatsAppProvider implements WhatsAppProvider, WhatsAppStatusN
     }
 
     private String displayName(String value) {
-        if (value == null || value.isBlank()) return null;
+        if (value == null || value.isBlank()) {
+            return null;
+        }
         String name = value.trim();
         return name.length() > 200 ? name.substring(0, 200) : name;
     }
 
     private String required(Map<String, String> payload, String key) {
         String value = payload.get(key);
-        if (
-            value == null || value.isBlank() || value.length() > 255
-        ) throw com.wxn.chatbot.common.ApiException.badRequest("Payload Twilio inválido");
+        if (value == null || value.isBlank() || value.length() > 255) {
+            throw com.wxn.chatbot.common.ApiException.badRequest("Payload Twilio inválido");
+        }
         return value;
     }
 }

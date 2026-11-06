@@ -13,26 +13,30 @@ public final class MessageStatusTransitions {
             case SENT -> List.of(
                 NormalizedMessageStatus.PENDING,
                 NormalizedMessageStatus.ACCEPTED,
-                NormalizedMessageStatus.UNKNOWN
+                NormalizedMessageStatus.UNKNOWN,
+                NormalizedMessageStatus.SIMULATED
             );
             case DELIVERED -> List.of(
                 NormalizedMessageStatus.PENDING,
                 NormalizedMessageStatus.ACCEPTED,
                 NormalizedMessageStatus.SENT,
-                NormalizedMessageStatus.UNKNOWN
+                NormalizedMessageStatus.UNKNOWN,
+                NormalizedMessageStatus.SIMULATED
             );
             case READ -> List.of(
                 NormalizedMessageStatus.PENDING,
                 NormalizedMessageStatus.ACCEPTED,
                 NormalizedMessageStatus.SENT,
                 NormalizedMessageStatus.DELIVERED,
-                NormalizedMessageStatus.UNKNOWN
+                NormalizedMessageStatus.UNKNOWN,
+                NormalizedMessageStatus.SIMULATED
             );
             case FAILED -> List.of(
                 NormalizedMessageStatus.PENDING,
                 NormalizedMessageStatus.ACCEPTED,
                 NormalizedMessageStatus.SENT,
-                NormalizedMessageStatus.UNKNOWN
+                NormalizedMessageStatus.UNKNOWN,
+                NormalizedMessageStatus.SIMULATED
             );
             case UNKNOWN -> List.of(NormalizedMessageStatus.PENDING);
             default -> List.of();

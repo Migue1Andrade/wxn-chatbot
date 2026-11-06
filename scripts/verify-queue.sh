@@ -6,6 +6,8 @@ set -a
 source .env
 set +a
 
+npm run lint
+
 # Separate containers and volumes keep fixtures away from development data.
 export POSTGRES_PORT=14003 MONGO_PORT=14004
 export POSTGRES_VOLUME=wxn-queue-review_postgres_data
@@ -15,8 +17,12 @@ export POSTGRES_URL="jdbc:postgresql://127.0.0.1:${POSTGRES_PORT}/${POSTGRES_DB}
 export MONGODB_URI="mongodb://127.0.0.1:${MONGO_PORT}/${MONGO_DB}"
 export WXN_INTEGRATION_TEST=true
 
-compose() { docker compose -p wxn-queue-review "$@"; }
-cleanup() { compose stop; }
+compose() {
+  docker compose -p wxn-queue-review "$@"
+}
+cleanup() {
+  compose stop
+}
 trap cleanup EXIT
 compose config --quiet
 compose up -d

@@ -1,9 +1,11 @@
 package com.wxn.chatbot.websocket;
 
+import com.wxn.chatbot.auth.service.AccountSessions;
 import com.wxn.chatbot.config.DevelopmentAccess;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.*;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.server.*;
 import org.springframework.messaging.simp.config.*;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
@@ -20,13 +22,19 @@ public class WebSocketConfiguration implements WebSocketMessageBrokerConfigurer 
     private final SubscriptionReceiptInterceptor receipts;
     private final DevelopmentAccess access;
     private final String origin;
+    private final AccountSessions sessions;
+    private final com.wxn.chatbot.auth.config.AccountSocketAccess socketAccess;
 
     public WebSocketConfiguration(
         DevelopmentStompInterceptor interceptor,
+        AccountSessions sessions,
+        com.wxn.chatbot.auth.config.AccountSocketAccess socketAccess,
         DevelopmentAccess access,
         SubscriptionReceiptInterceptor receipts,
         @Value("${wxn.dev.frontend-origin:http://localhost:4002}") String origin
     ) {
+        this.sessions = sessions;
+        this.socketAccess = socketAccess;
         this.receipts = receipts;
         this.interceptor = interceptor;
         this.access = access;
@@ -44,10 +52,25 @@ public class WebSocketConfiguration implements WebSocketMessageBrokerConfigurer 
                     WebSocketHandler handler,
                     Map<String, Object> attributes
                 ) {
-                    if (!access.enabled()) response.setStatusCode(
-                        org.springframework.http.HttpStatus.NOT_FOUND
-                    );
-                    return access.enabled();
+                    if (!access.enabled()) {
+                        response.setStatusCode(org.springframework.http.HttpStatus.NOT_FOUND);
+                    }
+                    if (!access.enabled()) {
+                        return false;
+                    }
+                    if (!(request instanceof ServletServerHttpRequest servlet)) {
+                        response.setStatusCode(HttpStatus.UNAUTHORIZED);
+                        return false;
+                    }
+                    var session = servlet.getServletRequest().getSession(false);
+                    try {
+                        sessions.require(session);
+                    } catch (com.wxn.chatbot.common.ApiException denied) {
+                        response.setStatusCode(HttpStatus.UNAUTHORIZED);
+                        return false;
+                    }
+                    attributes.put(AccountSessions.SOCKET_SESSION, session);
+                    return true;
                 }
 
                 public void afterHandshake(
@@ -76,8 +99,14 @@ public class WebSocketConfiguration implements WebSocketMessageBrokerConfigurer 
     }
 
     @Override
+    public void configureClientOutboundChannel(ChannelRegistration registration) {
+        registration.interceptors(socketAccess);
+    }
+
+    @Override
     public void configureWebSocketTransport(WebSocketTransportRegistration registration) {
         registration
+            .addDecoratorFactory(socketAccess)
             .setTimeToFirstMessage(10000)
             .setMessageSizeLimit(16384)
             .setSendBufferSizeLimit(262144)

@@ -1,6 +1,7 @@
 import angular from 'angular';
 
 export const ChatEvents = Object.freeze({
+  ACCESS_REVOKED: 'wxn:chat:access-revoked',
   SELECTED: 'wxn:chat:selected',
   CREATED: 'wxn:chat:created',
   UPDATED: 'wxn:chat:updated',

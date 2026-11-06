@@ -38,11 +38,14 @@ class MessageHistorySession {
     return !this.disposed && selection === this.selection && (request == null || request === this.request);
   }
   upsert(message) {
-    if (message.conversationId === this.conversationId)
+    if (message.conversationId === this.conversationId) {
       this.state.items = mergeMessages(this.state.items, [message]);
+    }
   }
   reconcile() {
-    if (!this.conversationId || this.disposed) return;
+    if (!this.conversationId || this.disposed) {
+      return;
+    }
     const selection = this.selection;
     const request = ++this.request;
     const id = this.conversationId;
@@ -51,7 +54,9 @@ class MessageHistorySession {
     return this.messages
       .listMessages(id)
       .then(async (page) => {
-        if (!this.current(selection, request)) return;
+        if (!this.current(selection, request)) {
+          return;
+        }
         this.state.items = mergeMessages(this.state.items, page.items);
         if (!this.initialized) {
           this.nextCursor = page.nextCursor;
@@ -65,35 +70,49 @@ class MessageHistorySession {
           this.current(selection, request)
         ) {
           page = await this.messages.listMessages(id, page.nextCursor);
-          if (!this.current(selection, request)) return;
+          if (!this.current(selection, request)) {
+            return;
+          }
           this.state.items = mergeMessages(this.state.items, page.items);
         }
-        if (this.current(selection, request)) this.query.succeed();
+        if (this.current(selection, request)) {
+          this.query.succeed();
+        }
       })
       .catch((error) => {
-        if (this.current(selection, request)) this.query.fail(error);
+        if (this.current(selection, request)) {
+          this.query.fail(error);
+        }
       });
   }
   loadOlder() {
-    if (this.olderQuery.loading || !this.state.hasMore || !this.nextCursor) return;
+    if (this.olderQuery.loading || !this.state.hasMore || !this.nextCursor) {
+      return;
+    }
     const selection = this.selection;
     const id = this.conversationId;
     this.olderQuery.begin();
     return this.messages
       .listMessages(id, this.nextCursor)
       .then((page) => {
-        if (!this.current(selection)) return;
+        if (!this.current(selection)) {
+          return;
+        }
         this.state.items = mergeMessages(this.state.items, page.items);
         this.nextCursor = page.nextCursor;
         this.state.hasMore = page.hasMore;
         this.olderQuery.succeed();
       })
       .catch((error) => {
-        if (this.current(selection)) this.olderQuery.fail(error);
+        if (this.current(selection)) {
+          this.olderQuery.fail(error);
+        }
       });
   }
   loadEvents() {
-    if (!this.conversationId || this.disposed) return;
+    if (!this.conversationId || this.disposed) {
+      return;
+    }
     const selection = this.selection;
     const request = ++this.eventRequest;
     this.eventsQuery.begin();
@@ -106,7 +125,9 @@ class MessageHistorySession {
         }
       })
       .catch((error) => {
-        if (this.current(selection) && request === this.eventRequest) this.eventsQuery.fail(error);
+        if (this.current(selection) && request === this.eventRequest) {
+          this.eventsQuery.fail(error);
+        }
       });
   }
   get loading() {

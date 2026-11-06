@@ -7,6 +7,8 @@ angular.module('wxn.chats').directive('chatHeader', function () {
     bindToController: {
       conversation: '<',
       channelName: '@',
+      connection: '<',
+      onRefreshConnection: '&',
       members: '<',
       channels: '<',
       actor: '<',

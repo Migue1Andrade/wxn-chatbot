@@ -10,7 +10,6 @@ public final class ConversationActivityMapper {
     public static ConversationManagementDtos.Activity response(ConversationActivity event) {
         return new ConversationManagementDtos.Activity(
             event.getId().toHexString(),
-            event.getCompanyId(),
             event.getConversationId().toHexString(),
             event.getEvent(),
             event.getActorMemberId(),

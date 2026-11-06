@@ -2,6 +2,9 @@ package com.wxn.chatbot.conversation.model;
 
 public enum ConversationActivityType {
     CONVERSATION_CREATED,
+    CONVERSATION_STATUS_CHANGED,
+    CONVERSATION_PRIORITY_CHANGED,
+    CONVERSATION_RESOLVED,
     MEMBER_ASSUMED,
     MEMBER_ASSIGNED,
     MEMBER_TRANSFERRED,

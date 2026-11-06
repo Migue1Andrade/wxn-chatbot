@@ -1,0 +1,157 @@
+<div class="flex min-h-screen bg-slate-50 text-slate-800">
+  <management-navigation></management-navigation>
+  <main class="product-page mx-auto min-w-0 w-full max-w-6xl p-6 sm:p-10">
+    <settings-breadcrumb></settings-breadcrumb>
+    <header class="mb-8 flex items-center justify-between gap-5">
+      <div>
+        <h1 class="text-2xl font-semibold">
+          {{vm.global ? 'Templates globais' : 'Minhas respostas rápidas'}}
+        </h1>
+        <p class="mt-2 text-sm text-slate-500">
+          Textos reutilizáveis com variáveis @@. A inserção nunca envia a mensagem automaticamente.
+        </p>
+      </div>
+      <button
+        class="rounded-xl bg-teal-700 px-4 py-2 text-sm text-white"
+        ng-click="vm.edit()"
+      >
+        Novo template
+      </button>
+    </header>
+    <p
+      ng-if="vm.notice"
+      class="product-success"
+      role="status"
+    >
+      {{vm.notice}}
+    </p>
+    <error-state
+      ng-if="vm.error"
+      message="{{vm.error}}"
+      on-retry="vm.load()"
+    ></error-state>
+    <table-skeleton ng-if="vm.loading"></table-skeleton>
+    <div
+      ng-if="!vm.loading"
+      class="grid gap-4 md:grid-cols-2"
+    >
+      <article
+        ng-repeat="row in vm.rows | filter:{scope:vm.global ? 'GLOBAL' : 'PERSONAL'} track by row.id"
+        class="rounded-xl border border-slate-200 bg-white p-5"
+      >
+        <header class="flex justify-between gap-4">
+          <h2 class="text-sm font-semibold">{{row.name}}</h2>
+          <span class="text-xs text-slate-400">{{row.active ? 'Ativo' : 'Inativo'}}</span>
+        </header>
+        <p class="my-3 text-xs font-medium text-teal-700">@@{{row.shortcut}}</p>
+        <p class="mb-3 text-xs text-slate-400">{{row.description}}</p>
+        <p class="whitespace-pre-wrap text-sm text-slate-600">{{row.content}}</p>
+        <footer class="mt-5 flex gap-4 text-xs text-teal-700">
+          <button ng-click="vm.edit(row)">Editar</button>
+          <button ng-click="vm.duplicate(row)">Duplicar</button>
+          <button ng-click="vm.remove(row)">Excluir</button>
+        </footer>
+      </article>
+    </div>
+    <p
+      ng-if="!vm.rows.length && !vm.loading"
+      class="py-16 text-center text-sm text-slate-400"
+    >
+      Nenhuma resposta rápida cadastrada.
+    </p>
+    <button
+      ng-if="vm.more"
+      ng-click="vm.load(true)"
+      class="mt-6 text-sm text-teal-700"
+    >
+      Carregar mais
+    </button>
+  </main>
+  <app-modal
+    open="!!vm.form"
+    title="Resposta rápida"
+    busy="vm.busy"
+    on-close="vm.form = null"
+  >
+    <form
+      ng-submit="vm.save()"
+      class="space-y-4"
+    >
+      <p
+        ng-if="vm.error"
+        class="text-sm text-red-700"
+        role="alert"
+      >
+        {{vm.error}}
+      </p>
+      <label class="block text-sm">
+        Nome
+        <input
+          ng-model="vm.form.name"
+          required
+          maxlength="100"
+          class="mt-1 w-full rounded-lg border border-slate-200 p-2"
+        />
+      </label>
+      <label class="block text-sm">
+        Atalho (sem @@)
+        <input
+          ng-model="vm.form.shortcut"
+          required
+          ng-pattern="/^[a-zA-Z0-9_]{2,50}$/"
+          maxlength="50"
+          class="mt-1 w-full rounded-lg border border-slate-200 p-2"
+        />
+      </label>
+      <label class="block text-sm">
+        Descrição
+        <input
+          ng-model="vm.form.description"
+          maxlength="300"
+          class="mt-1 w-full rounded-lg border border-slate-200 p-2"
+        />
+      </label>
+      <label class="block text-sm">
+        Conteúdo
+        <textarea
+          ng-model="vm.form.content"
+          required
+          maxlength="1600"
+          rows="5"
+          class="mt-1 w-full rounded-lg border border-slate-200 p-2"
+        ></textarea>
+      </label>
+      <p class="text-xs text-slate-400">
+        Variáveis: @@nome, @@primeiro_nome, @@telefone, @@atendente, @@protocolo, @@data e @@hora. Valores
+        ausentes são informados no compositor.
+      </p>
+      <label class="flex gap-2 text-sm">
+        <input
+          type="checkbox"
+          ng-model="vm.form.active"
+        />
+        Ativo
+      </label>
+      <button
+        type="submit"
+        ng-disabled="vm.busy"
+        class="rounded-lg bg-teal-700 px-4 py-2 text-white"
+      >
+        Salvar
+      </button>
+    </form>
+  </app-modal>
+  <app-modal
+    open="!!vm.deleting"
+    title="Excluir template"
+    on-close="vm.deleting = null"
+  >
+    <p>Excluir {{vm.deleting.name}}? O registro será removido logicamente.</p>
+    <button
+      class="mt-4 rounded-lg bg-red-700 px-4 py-2 text-white"
+      ng-click="vm.confirmDelete()"
+    >
+      Confirmar exclusão
+    </button>
+  </app-modal>
+</div>

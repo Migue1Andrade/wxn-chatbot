@@ -4,11 +4,13 @@ import com.wxn.chatbot.common.ApiException;
 import com.wxn.chatbot.whatsapp.service.TwilioIngressService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.*;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.MediaType;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@Profile("legacy")
 @RequestMapping("/api/webhooks/whatsapp/twilio/{channelKey}")
 public class TwilioWebhookController {
 
@@ -51,7 +53,9 @@ public class TwilioWebhookController {
                 .values()
                 .stream()
                 .anyMatch(v -> v.size() != 1)
-        ) throw ApiException.badRequest("Formato de webhook não suportado");
+        ) {
+            throw ApiException.badRequest("Formato de webhook não suportado");
+        }
         return form.toSingleValueMap();
     }
 }

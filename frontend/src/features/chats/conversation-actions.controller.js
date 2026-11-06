@@ -1,4 +1,5 @@
 import angular from 'angular';
+import { contactInitials, contactTone } from '../../shared/contact-identity.js';
 import { AsyncState } from '../../core/state/async-state.js';
 import { ConversationActions } from './conversation-actions.service.js';
 
@@ -12,6 +13,8 @@ angular.module('wxn.chats').controller('ConversationActionsController', [
   'ChatEvents',
   function ($scope, $timeout, chats, actions, activities, bus, events) {
     const vm = this;
+    vm.initials = contactInitials;
+    vm.tone = contactTone;
     vm.operation = new AsyncState();
     vm.historyState = new AsyncState();
     vm.panel = null;
@@ -49,6 +52,7 @@ angular.module('wxn.chats').controller('ConversationActionsController', [
       if (changes.conversation && changes.conversation.previousValue?.id !== vm.conversation?.id) {
         epoch++;
         vm.panel = null;
+        vm.menuOpen = false;
         vm.operation.reset();
         vm.historyState.reset();
         vm.history = [];
@@ -56,16 +60,23 @@ angular.module('wxn.chats').controller('ConversationActionsController', [
       }
     };
     vm.closePanel = () => {
-      if (!vm.operation.loading) vm.panel = null;
+      if (!vm.operation.loading) {
+        vm.panel = null;
+      }
     };
     vm.open = (panel) => {
-      if (vm.operation.loading) return;
+      if (vm.operation.loading) {
+        return;
+      }
+      vm.menuOpen = false;
       vm.panel = panel;
       vm.selection = null;
       vm.reason = '';
       vm.operation.reset();
       vm.success = null;
-      if (panel === 'history') vm.loadHistory();
+      if (panel === 'history') {
+        vm.loadHistory();
+      }
     };
     vm.loadHistory = () => {
       const id = vm.conversation.id;
@@ -80,13 +91,19 @@ angular.module('wxn.chats').controller('ConversationActionsController', [
           }
         })
         .catch((error) => {
-          if (epoch === request) vm.historyState.fail(error);
+          if (epoch === request) {
+            vm.historyState.fail(error);
+          }
         });
     };
     vm.submit = () => {
       const action = vm.panel;
-      if (vm.operation.loading || !vm.actor || !Object.values(ConversationActions).includes(action)) return;
-      if (vm.isSelection() && (!vm.selection || !vm.selection.available)) return;
+      if (vm.operation.loading || !vm.actor || !Object.values(ConversationActions).includes(action)) {
+        return;
+      }
+      if (vm.isSelection() && (!vm.selection || !vm.selection.available)) {
+        return;
+      }
       if (action === ConversationActions.TRANSFER && vm.selection.id === vm.conversation.assignedMemberId) {
         vm.operation.fail(new Error('Selecione outro membro para transferir.'));
         return;
@@ -98,7 +115,9 @@ angular.module('wxn.chats').controller('ConversationActionsController', [
         expectedVersion: vm.conversation.version || 0,
         reason: vm.reason.trim() || null,
       };
-      if (vm.isSelection()) body.memberId = vm.selection.id;
+      if (vm.isSelection()) {
+        body.memberId = vm.selection.id;
+      }
       vm.operation.begin();
       actions
         .execute(id, action, body)
@@ -111,17 +130,22 @@ angular.module('wxn.chats').controller('ConversationActionsController', [
           }
         })
         .catch((error) => {
-          if (!destroyed && epoch === request) vm.operation.fail(error);
-          if (error.status === 409)
+          if (!destroyed && epoch === request) {
+            vm.operation.fail(error);
+          }
+          if (error.status === 409) {
             chats
               .getConversation(id)
               .then((conversation) => bus.emit(events.UPDATED, { conversationId: id, payload: conversation }))
               .catch(() => {});
+          }
         });
     };
     const cleanup = [events.ASSIGNED, events.TRANSFERRED, events.CLOSED, events.REOPENED].map((type) =>
       bus.on(type, (event) => {
-        if (vm.panel !== 'history' || event.conversationId !== vm.conversation?.id) return;
+        if (vm.panel !== 'history' || event.conversationId !== vm.conversation?.id) {
+          return;
+        }
         $timeout.cancel(historyTimer);
         historyTimer = $timeout(vm.loadHistory, 120);
       }),

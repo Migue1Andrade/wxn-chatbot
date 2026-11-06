@@ -15,9 +15,6 @@ public class Conversation {
     @Id
     private ObjectId id;
 
-    @Field("companyId")
-    private Long companyId;
-
     @Field("status")
     private String status;
 
@@ -85,7 +82,7 @@ public class Conversation {
     }
 
     @Field("version")
-    private Long version;
+    private Long version = 0L;
 
     public Long getVersion() {
         return version;
@@ -132,6 +129,106 @@ public class Conversation {
         return version == null ? 0 : version;
     }
 
+    private String priority;
+
+    public String getPriority() {
+        return priority;
+    }
+
+    public void setPriority(String value) {
+        priority = value;
+    }
+
+    private Long departmentId;
+
+    public Long getDepartmentId() {
+        return departmentId;
+    }
+
+    public void setDepartmentId(Long value) {
+        departmentId = value;
+    }
+
+    private OffsetDateTime cycleStartedAt;
+
+    public OffsetDateTime getCycleStartedAt() {
+        return cycleStartedAt;
+    }
+
+    public void setCycleStartedAt(OffsetDateTime value) {
+        cycleStartedAt = value;
+    }
+
+    private OffsetDateTime resolvedAt;
+
+    public OffsetDateTime getResolvedAt() {
+        return resolvedAt;
+    }
+
+    public void setResolvedAt(OffsetDateTime value) {
+        resolvedAt = value;
+    }
+
+    private OffsetDateTime waitingForAgentSince;
+
+    public OffsetDateTime getWaitingForAgentSince() {
+        return waitingForAgentSince;
+    }
+
+    public void setWaitingForAgentSince(OffsetDateTime value) {
+        waitingForAgentSince = value;
+    }
+
+    private OffsetDateTime lastInboundAt;
+
+    public OffsetDateTime getLastInboundAt() {
+        return lastInboundAt;
+    }
+
+    public void setLastInboundAt(OffsetDateTime value) {
+        lastInboundAt = value;
+    }
+
+    private OffsetDateTime lastOutboundAt;
+
+    public OffsetDateTime getLastOutboundAt() {
+        return lastOutboundAt;
+    }
+
+    public void setLastOutboundAt(OffsetDateTime value) {
+        lastOutboundAt = value;
+    }
+
+    private OffsetDateTime reopenedAt;
+
+    public OffsetDateTime getReopenedAt() {
+        return reopenedAt;
+    }
+
+    public void setReopenedAt(OffsetDateTime value) {
+        reopenedAt = value;
+    }
+
+    private Integer reopenCount;
+
+    public Integer getReopenCount() {
+        return reopenCount;
+    }
+
+    public void setReopenCount(Integer value) {
+        reopenCount = value;
+    }
+
+    private List<org.bson.Document> resolutionCycles;
+
+    public List<org.bson.Document> getResolutionCycles() {
+        return resolutionCycles == null ? List.of() : List.copyOf(resolutionCycles);
+    }
+
+    public void setResolutionCycles(List<org.bson.Document> value) {
+        resolutionCycles = value;
+    }
+
     public Conversation() {}
 
     public ObjectId getId() {
@@ -140,14 +237,6 @@ public class Conversation {
 
     public void setId(ObjectId value) {
         id = value;
-    }
-
-    public Long getCompanyId() {
-        return companyId;
-    }
-
-    public void setCompanyId(Long value) {
-        companyId = value;
     }
 
     public String getStatus() {
@@ -212,6 +301,16 @@ public class Conversation {
 
     public void setConversationType(ConversationType value) {
         conversationType = value;
+    }
+
+    private ObjectId contactId;
+
+    public ObjectId getContactId() {
+        return contactId;
+    }
+
+    public void setContactId(ObjectId value) {
+        contactId = value;
     }
 
     public String getContactPhone() {

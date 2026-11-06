@@ -1,0 +1,97 @@
+<div class="flex min-h-screen bg-slate-50 text-slate-800">
+  <management-navigation></management-navigation>
+  <main class="product-page kb-workspace">
+    <header class="kb-heading">
+      <div>
+        <p class="kb-eyebrow">VISÃO GERAL · WXN</p>
+        <h1>Sua operação, em perspectiva</h1>
+        <p>Indicadores reais dos atendimentos registrados na plataforma.</p>
+      </div>
+      <button
+        ng-click="vm.load()"
+        ng-disabled="vm.loading"
+      >
+        Atualizar
+      </button>
+    </header>
+    <error-state
+      ng-if="vm.error"
+      message="{{vm.error}}"
+      on-retry="vm.load()"
+    ></error-state>
+    <table-skeleton ng-if="vm.loading && !vm.metrics"></table-skeleton>
+    <section class="kb-metrics">
+      <div>
+        <span>Abertos</span>
+        <strong>{{vm.metrics.open == null ? '—' : vm.metrics.open}}</strong>
+        <small>Todos os canais</small>
+      </div>
+      <div>
+        <span>Sem responsável</span>
+        <strong>{{vm.metrics.unassigned == null ? '—' : vm.metrics.unassigned}}</strong>
+        <small>Fila operacional</small>
+      </div>
+      <div>
+        <span>Esperando a equipe</span>
+        <strong>{{vm.metrics.waitingForAgent == null ? '—' : vm.metrics.waitingForAgent}}</strong>
+        <small>Resposta externa pendente</small>
+      </div>
+      <div>
+        <span>Resolvidos hoje</span>
+        <strong>{{vm.metrics.resolvedToday == null ? '—' : vm.metrics.resolvedToday}}</strong>
+        <small>Dia em {{vm.metrics.timezone}}</small>
+      </div>
+      <div>
+        <span>Resolução média</span>
+        <strong>
+          {{vm.metrics.averageResolutionMinutes == null ? '—' : (vm.metrics.averageResolutionMinutes |
+          number:0) + ' min'}}
+        </strong>
+        <small>Todos os ciclos registrados</small>
+      </div>
+    </section>
+    <div class="grid gap-6 lg:grid-cols-2">
+      <section class="rounded-xl border border-slate-200 bg-white p-6">
+        <h2 class="mb-6 text-sm font-semibold">Distribuição por status</h2>
+        <div
+          ng-repeat="group in vm.metrics.groups"
+          class="mb-5"
+        >
+          <div class="mb-2 flex justify-between text-xs">
+            <span>{{vm.labels[group.status] || group.status}}</span>
+            <strong>{{group.count}}</strong>
+          </div>
+          <div class="h-2 overflow-hidden rounded-full bg-slate-100">
+            <div
+              class="h-full rounded-full bg-teal-600"
+              ng-style="{width: (vm.total ? group.count / vm.total * 100 : 0) + '%'}"
+            ></div>
+          </div>
+        </div>
+        <p
+          ng-if="!vm.total && !vm.loading && !vm.error"
+          class="py-10 text-center text-sm text-slate-400"
+        >
+          Sem atendimentos registrados.
+        </p>
+      </section>
+      <section class="rounded-xl border border-slate-200 bg-white p-6">
+        <h2 class="mb-3 text-sm font-semibold">Central de atendimentos</h2>
+        <p class="text-sm leading-6 text-slate-500">
+          Acompanhe a fila por status, identifique conversas sem responsável e distribua os atendimentos com
+          histórico de alterações.
+        </p>
+        <a
+          href="#!/kanban"
+          class="mt-6 inline-block rounded-lg bg-teal-700 px-4 py-2 text-sm text-white"
+        >
+          Abrir Kanban ↗
+        </a>
+        <p class="mt-8 text-xs leading-5 text-slate-400">
+          As médias consideram somente ciclos com início e resolução registrados. Dados legados sem timestamps
+          não recebem durações estimadas.
+        </p>
+      </section>
+    </div>
+  </main>
+</div>

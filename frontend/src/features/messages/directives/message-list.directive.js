@@ -16,6 +16,7 @@ angular.module('wxn.messages').directive('messageList', [
         loading: '<',
         error: '<',
         conversationId: '<',
+        contactName: '@',
         memberName: '&',
         hasMore: '<',
         olderLoading: '<',
@@ -36,8 +37,9 @@ angular.module('wxn.messages').directive('messageList', [
             after &&
             before.id !== after.id &&
             Date.parse(after.createdAt) <= Date.parse(before.createdAt)
-          )
+          ) {
             vm.restore = vm.captureScroll?.();
+          }
           vm.entries = [
             ...(vm.messages || []).map((message) => ({
               id: 'message:' + message.id,
@@ -70,7 +72,12 @@ angular.module('wxn.messages').directive('messageList', [
         ctrl.captureScroll = () => ({ height: viewport.scrollHeight, top: viewport.scrollTop });
         function visible() {
           const latest = ctrl.messages?.at(-1);
-          const canRead = following && latest && document.visibilityState === 'visible';
+          const canRead =
+            following &&
+            latest &&
+            document.visibilityState === 'visible' &&
+            viewport.getClientRects().length > 0 &&
+            viewport.clientHeight > 0;
           bus.emit(events.VISIBLE, {
             conversationId: ctrl.conversationId,
             throughMessageId: canRead ? latest.id : null,
@@ -86,7 +93,9 @@ angular.module('wxn.messages').directive('messageList', [
         function scroll() {
           following = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 80;
           scope.$evalAsync(() => {
-            if (following) ctrl.newMessages = 0;
+            if (following) {
+              ctrl.newMessages = 0;
+            }
             visible();
           });
           if (
@@ -94,9 +103,12 @@ angular.module('wxn.messages').directive('messageList', [
             viewport.scrollHeight > viewport.clientHeight &&
             ctrl.hasMore &&
             !ctrl.olderLoading
-          )
+          ) {
             scope.$evalAsync(() => ctrl.onLoadOlder());
+          }
         }
+        const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(visible);
+        observer?.observe(viewport);
         viewport.addEventListener('scroll', scroll, { passive: true });
         document.addEventListener('visibilitychange', visible);
         const offConversation = scope.$watch(
@@ -112,8 +124,9 @@ angular.module('wxn.messages').directive('messageList', [
           () => ctrl.entries,
           () => {
             const count = ctrl.messages?.length || 0;
-            if (!following && !ctrl.restore && count > previousCount)
+            if (!following && !ctrl.restore && count > previousCount) {
               ctrl.newMessages += count - previousCount;
+            }
             previousCount = count;
             $timeout.cancel(timer);
             timer = $timeout(() => {
@@ -122,11 +135,14 @@ angular.module('wxn.messages').directive('messageList', [
                 ctrl.restore = null;
                 following = false;
                 visible();
-              } else if (following) jump();
+              } else if (following) {
+                jump();
+              }
             }, 0);
           },
         );
         scope.$on('$destroy', () => {
+          observer?.disconnect();
           viewport.removeEventListener('scroll', scroll);
           document.removeEventListener('visibilitychange', visible);
           offConversation();

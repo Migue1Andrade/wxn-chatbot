@@ -1,0 +1,184 @@
+<button
+  type="button"
+  class="mobile-menu-toggle"
+  ng-click="$ctrl.navOpen = !$ctrl.navOpen"
+  aria-label="Abrir navegação"
+  aria-expanded="{{$ctrl.navOpen}}"
+  aria-controls="workspace-navigation"
+>
+  <svg
+    viewBox="0 0 24 24"
+    aria-hidden="true"
+  >
+    <path d="M4 6h16M4 12h16M4 18h16" />
+  </svg>
+  <span>WXN</span>
+</button>
+<div
+  ng-if="$ctrl.navOpen"
+  class="navigation-backdrop"
+  ng-click="$ctrl.closeNavigation()"
+></div>
+<nav
+  id="workspace-navigation"
+  ng-class="{'is-open': $ctrl.navOpen}"
+  focus-region="$ctrl.navOpen"
+  on-region-close="$ctrl.closeNavigation()"
+  ng-click="$ctrl.closeNavigation()"
+  class="workspace-rail"
+  aria-label="Navegação principal"
+>
+  <a
+    class="workspace-brand"
+    href="#!/"
+    aria-label="WXN atendimento"
+  >
+    W
+  </a>
+  <div class="rail-links">
+    <a
+      ng-if="$ctrl.account.user.role === 'ADMIN'"
+      href="#!/dashboard"
+      class="rail-link"
+      ng-class="{'is-active': $ctrl.isDashboard}"
+      aria-label="Dashboard"
+      title="Dashboard"
+    >
+      <svg viewBox="0 0 24 24">
+        <rect
+          x="3"
+          y="3"
+          width="7"
+          height="7"
+          rx="2"
+        />
+        <rect
+          x="14"
+          y="3"
+          width="7"
+          height="11"
+          rx="2"
+        />
+        <rect
+          x="3"
+          y="14"
+          width="7"
+          height="7"
+          rx="2"
+        />
+        <rect
+          x="14"
+          y="18"
+          width="7"
+          height="3"
+          rx="1"
+        />
+      </svg>
+    </a>
+    <button
+      type="button"
+      class="rail-link"
+      ng-class="{'is-active': $ctrl.isChat && $ctrl.chat.filter === 'all'}"
+      ng-click="$ctrl.openConversations('all')"
+      aria-label="{{$ctrl.account.user.role === 'ADMIN' ? 'Conversas' : 'Minhas conversas'}}"
+      title="Todas as conversas"
+    >
+      <svg viewBox="0 0 24 24">
+        <path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
+        <path d="M7 9h10M7 13h6" />
+      </svg>
+    </button>
+    <a
+      ng-if="$ctrl.account.user.role === 'ADMIN'"
+      href="#!/kanban"
+      class="rail-link"
+      ng-class="{'is-active': $ctrl.isKanban}"
+      aria-label="Kanban"
+      title="Central de atendimentos"
+    >
+      <svg viewBox="0 0 24 24">
+        <rect
+          x="3"
+          y="4"
+          width="18"
+          height="16"
+          rx="3"
+        />
+        <path d="M9 4v16m6-16v16M5.5 8h1M11.5 8h1M17.5 8h1" />
+      </svg>
+    </a>
+    <a
+      href="#!/tasks"
+      class="rail-link"
+      ng-class="{'is-active': $ctrl.isTasks}"
+      aria-label="Atividades"
+      title="Atividades"
+    >
+      <svg viewBox="0 0 24 24"><path d="m3 7 2 2 4-4m-6 12 2 2 4-4M12 7h9M12 17h9" /></svg>
+    </a>
+    <a
+      ng-if="$ctrl.account.user.role === 'ADMIN'"
+      href="#!/members"
+      class="rail-link"
+      ng-class="{'is-active': $ctrl.isMembers}"
+      aria-label="Profissionais"
+      title="Profissionais"
+    >
+      <svg viewBox="0 0 24 24">
+        <circle
+          cx="9"
+          cy="7"
+          r="3"
+        />
+        <path d="M3 20v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3m1-16a3 3 0 0 1 0 6m2 4a4 4 0 0 1 3 4v2" />
+      </svg>
+    </a>
+    <a
+      ng-if="$ctrl.account.user.role === 'ADMIN'"
+      href="#!/reports"
+      class="rail-link"
+      ng-class="{'is-active': $ctrl.isReports}"
+      aria-label="Relatórios"
+      title="Relatórios"
+    >
+      <svg viewBox="0 0 24 24"><path d="M5 3h14v18H5zM8 8h8M8 12h8M8 16h5" /></svg>
+    </a>
+  </div>
+  <div class="rail-bottom">
+    <a
+      href="#!/settings"
+      class="rail-link"
+      ng-class="{'is-active': $ctrl.isSettings}"
+      aria-label="Configurações"
+      title="Configurações"
+    >
+      <svg viewBox="0 0 24 24">
+        <path
+          d="m9 3-.6 2.4-2 .9L4.2 5.6 2 9.4l1.8 1.7v1.8L2 14.6l2.2 3.8 2.2-.7 2 .9L9 21h6l.6-2.4 2-.9 2.2.7 2.2-3.8-1.8-1.7v-1.8L22 9.4l-2.2-3.8-2.2.7-2-.9L15 3Z"
+        />
+        <circle
+          cx="12"
+          cy="12"
+          r="3"
+        />
+      </svg>
+    </a>
+    <button
+      type="button"
+      class="rail-link"
+      ng-click="$ctrl.logout()"
+      aria-label="Sair"
+      title="Sair"
+    >
+      <svg viewBox="0 0 24 24"><path d="M9 4H4v16h5m6-12 4 4-4 4m-6-4h10" /></svg>
+    </button>
+    <span
+      class="rail-profile"
+      title="{{$ctrl.account.user.name || 'Atendimento WXN'}}"
+    >
+      {{$ctrl.account.user.name ? $ctrl.account.user.name.slice(0,2).toUpperCase() : 'WX'}}
+    </span>
+  </div>
+</nav>
+
+<notification-bell></notification-bell>

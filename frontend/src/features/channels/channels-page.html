@@ -1,0 +1,413 @@
+<div class="flex min-h-screen bg-slate-50 text-slate-800">
+  <management-navigation></management-navigation>
+  <main class="product-page">
+    <settings-breadcrumb current="Canais WhatsApp"></settings-breadcrumb>
+    <header>
+      <div>
+        <span class="page-eyebrow">ATENDIMENTO</span>
+        <h1>Canais WhatsApp</h1>
+        <p>Conexão, capacidades e saúde operacional de cada canal.</p>
+      </div>
+      <button
+        type="button"
+        class="directory-primary"
+        ng-click="vm.form = {provider:'EVOLUTION',status:'ACTIVE'}"
+      >
+        Novo canal
+      </button>
+    </header>
+    <error-state
+      ng-if="vm.error && !vm.channel && !vm.form"
+      message="{{vm.error}}"
+      on-retry="vm.load()"
+    ></error-state>
+    <table-skeleton ng-if="vm.loading"></table-skeleton>
+    <div
+      class="channel-grid"
+      ng-if="!vm.loading"
+    >
+      <button
+        type="button"
+        class="channel-card"
+        ng-repeat="channel in vm.rows track by channel.id"
+        ng-click="vm.inspect(channel)"
+      >
+        <span
+          class="channel-card-symbol"
+          aria-hidden="true"
+        >
+          <svg viewBox="0 0 24 24">
+            <path d="M20 11a8 8 0 0 1-8 8H5l-3 3V11a9 9 0 0 1 18 0Z" />
+            <path d="M7 9h8M7 13h5" />
+          </svg>
+        </span>
+        <span class="channel-card-provider">{{channel.provider}} · #{{channel.id}}</span>
+        <h2>{{channel.name}}</h2>
+        <p>{{channel.phoneNumber || 'Número não informado'}}</p>
+        <footer>
+          <span>{{channel.status === 'ACTIVE' ? 'Canal habilitado' : 'Canal inativo'}}</span>
+          <strong>Ver diagnóstico ↗</strong>
+        </footer>
+      </button>
+      <p
+        ng-if="!vm.rows.length"
+        class="py-16 text-sm text-slate-500"
+      >
+        Nenhum canal cadastrado. Conecte o WhatsApp pela tela de configuração inicial.
+      </p>
+    </div>
+  </main>
+  <app-modal
+    open="!!vm.channel"
+    title="{{vm.channel.name}}"
+    busy="vm.busy"
+    on-close="vm.close()"
+  >
+    <div class="channel-diagnostic">
+      <error-state
+        ng-if="vm.error"
+        message="{{vm.error}}"
+        on-retry="vm.check()"
+      ></error-state>
+      <p
+        ng-if="vm.notice"
+        role="status"
+      >
+        {{vm.notice}}
+      </p>
+      <p
+        ng-if="vm.checking"
+        role="status"
+      >
+        Consultando o canal…
+      </p>
+      <div ng-if="vm.diagnostic">
+        <div
+          class="channel-state"
+          ng-class="vm.diagnostic.connection.state"
+        >
+          <strong>{{vm.labels[vm.diagnostic.connection.state] || vm.diagnostic.connection.state}}</strong>
+          <span>Última consulta: {{vm.diagnostic.connection.checkedAt | date:'dd/MM HH:mm:ss'}}</span>
+        </div>
+        <p
+          class="text-xs text-slate-500 mt-3"
+          ng-if="vm.diagnostic.connection.errorCode"
+        >
+          {{vm.diagnostic.connection.errorCode}}
+        </p>
+        <dl class="channel-stats">
+          <div>
+            <dt>Conversas</dt>
+            <dd>{{vm.diagnostic.conversations}}</dd>
+          </div>
+          <div>
+            <dt>Sem confirmação</dt>
+            <dd>{{vm.diagnostic.unknown}}</dd>
+          </div>
+          <div>
+            <dt>Falhas</dt>
+            <dd>{{vm.diagnostic.failed}}</dd>
+          </div>
+          <div>
+            <dt>Pendentes</dt>
+            <dd>{{vm.diagnostic.pending}}</dd>
+          </div>
+        </dl>
+        <h3>Callbacks</h3>
+        <p>
+          {{vm.diagnostic.lastCallbackAt ? 'Último callback autenticado: ' + (vm.diagnostic.lastCallbackAt |
+          date:'dd/MM/yyyy HH:mm') : 'Não verificado: nenhum callback autenticado registrado.'}}
+        </p>
+        <p ng-if="vm.diagnostic.lastErrorCode">Última falha de envio: {{vm.diagnostic.lastErrorCode}}</p>
+        <details class="channel-dev-tools">
+          <summary ng-click="vm.webhooks()">Callbacks pendentes ou com falha</summary>
+          <div
+            class="channel-unresolved"
+            ng-repeat="row in vm.webhookRows track by row._id"
+          >
+            <span>{{row.kind}} · {{row.state}} · {{row.attempts}} tentativas</span>
+            <p>{{row.lastError}}</p>
+            <button
+              type="button"
+              ng-if="row.state === 'FAILED'"
+              ng-click="vm.retryWebhook(row)"
+            >
+              Solicitar reprocessamento
+            </button>
+          </div>
+          <p ng-if="vm.webhookRows && !vm.webhookRows.length">Nenhum callback pendente.</p>
+        </details>
+        <h3>Capacidades do adapter</h3>
+        <div class="channel-capabilities">
+          <span ng-repeat="capability in vm.diagnostic.capabilities track by capability">
+            {{vm.capabilities[capability] || capability}}
+          </span>
+        </div>
+        <div class="channel-actions">
+          <button
+            type="button"
+            ng-click="vm.check()"
+            ng-disabled="vm.checking"
+          >
+            Consultar conexão
+          </button>
+          <button
+            type="button"
+            ng-if="vm.diagnostic.capabilities.includes('QR_CODE') && vm.diagnostic.connection.state !== 'CONNECTED' && vm.diagnostic.connection.state !== 'NOT_CONFIGURED'"
+            ng-click="vm.pair()"
+            ng-disabled="vm.busy"
+          >
+            Obter QR Code
+          </button>
+        </div>
+        <div
+          class="channel-pair"
+          ng-if="vm.qr"
+        >
+          <img
+            ng-if="vm.qr.image"
+            ng-src="{{vm.qr.image}}"
+            alt="QR Code temporário para pareamento do WhatsApp"
+          />
+          <p>{{vm.qr.instruction}}</p>
+          <small ng-if="vm.polls >= 4">
+            Acompanhamento automático encerrado. Atualize o QR Code se necessário.
+          </small>
+        </div>
+        <h3>Leitura no WhatsApp</h3>
+        <p>
+          A leitura da Inbox é individual na WXN. Confirmações remotas exigem esta política e uma ação
+          explícita na mensagem.
+        </p>
+        <button
+          type="button"
+          ng-if="vm.diagnostic.capabilities.includes('MARK_READ')"
+          ng-click="vm.policy()"
+          ng-disabled="vm.busy"
+        >
+          {{vm.diagnostic.remoteReadEnabled ? 'Desabilitar leitura remota' : 'Habilitar leitura remota'}}
+        </button>
+        <h3>Operações administrativas</h3>
+        <p>Reiniciar ou desconectar pode interromper envios e recebimentos. O histórico é preservado.</p>
+        <div class="channel-actions">
+          <button
+            type="button"
+            ng-if="vm.diagnostic.capabilities.includes('RESTART_INSTANCE')"
+            ng-click="vm.prepare('restart')"
+          >
+            Reiniciar instância
+          </button>
+          <button
+            type="button"
+            ng-if="vm.diagnostic.capabilities.includes('DISCONNECT_INSTANCE')"
+            ng-click="vm.prepare('disconnect')"
+          >
+            Desconectar instância
+          </button>
+          <button
+            type="button"
+            ng-if="vm.diagnostic.capabilities.includes('CONFIGURE_WEBHOOKS')"
+            ng-click="vm.prepare('webhooks')"
+          >
+            Cadastrar callbacks configurados
+          </button>
+        </div>
+        <div
+          class="channel-confirm"
+          ng-if="vm.confirmation"
+        >
+          <p>
+            Confirma {{vm.confirmation.operation === 'disconnect' ? 'a desconexão' : vm.confirmation.operation
+            === 'restart' ? 'o reinício' : 'a atualização dos callbacks'}} deste canal?
+          </p>
+          <button
+            type="button"
+            ng-disabled="vm.busy"
+            ng-click="vm.confirmation.operation === 'webhooks' ? vm.register() : vm.operate()"
+          >
+            Confirmar operação
+          </button>
+          <button
+            type="button"
+            ng-disabled="vm.busy"
+            ng-click="vm.confirmation=null"
+          >
+            Cancelar
+          </button>
+        </div>
+        <details
+          ng-if="vm.channel.provider === 'MOCK'"
+          class="channel-dev-tools"
+        >
+          <summary>Simulador local · sem WhatsApp real</summary>
+          <form
+            ng-submit="vm.simulate()"
+            class="channel-form"
+          >
+            <label>
+              Telefone sintético
+              <input
+                ng-model="vm.mockPhone"
+                required
+                placeholder="+12025550100"
+              />
+            </label>
+            <label>
+              Texto
+              <input
+                ng-model="vm.mockText"
+                required
+                maxlength="1600"
+              />
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                ng-model="vm.fromMe"
+              />
+              Mensagem enviada pelo número conectado (fromMe)
+            </label>
+            <label ng-if="vm.fromMe">
+              <input
+                type="checkbox"
+                ng-model="vm.fromApi"
+              />
+              Eco da API aguardando correlação (não é uma mensagem do aplicativo)
+            </label>
+            <button
+              type="submit"
+              ng-disabled="vm.busy"
+            >
+              Simular mensagem
+            </button>
+            <button
+              type="button"
+              ng-if="vm.lastInbound"
+              ng-click="vm.simulate(true)"
+              ng-disabled="vm.busy"
+            >
+              Repetir callback com o mesmo ID
+            </button>
+          </form>
+          <label>
+            Próximo envio
+            <select ng-model="vm.nextScenario">
+              <option value="SUCCESS">Sucesso</option>
+              <option value="FAIL">Falha confirmada</option>
+              <option value="TIMEOUT">Timeout UNKNOWN</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            ng-click="vm.scenario()"
+            ng-disabled="!vm.nextScenario"
+          >
+            Aplicar cenário
+          </button>
+        </details>
+        <details class="channel-dev-tools">
+          <summary>Reconciliação manual de tentativa incerta</summary>
+          <p>
+            Exige um callback autenticado com ID, destinatário e conteúdo compatíveis. Não reenvia a mensagem.
+          </p>
+          <form
+            class="channel-form"
+            ng-submit="vm.reconcile()"
+          >
+            <label>
+              ID interno da tentativa
+              <input
+                ng-model="vm.correlation.messageId"
+                required
+              />
+            </label>
+            <label>
+              ID remoto observado
+              <input
+                ng-model="vm.correlation.externalMessageId"
+                required
+              />
+            </label>
+            <button
+              type="submit"
+              ng-disabled="vm.busy"
+            >
+              Correlacionar com evidência
+            </button>
+          </form>
+        </details>
+        <h3>Operações aguardando confirmação</h3>
+        <p ng-if="!vm.diagnostic.pendingMutations.length">Nenhuma edição, reação ou leitura pendente.</p>
+        <div
+          class="channel-unresolved"
+          ng-repeat="row in vm.diagnostic.pendingMutations track by row.id"
+        >
+          <code>{{row.messageId}}</code>
+          <span>{{row.operation}} · {{row.outcome}} · {{row.createdAt | date:'dd/MM HH:mm'}}</span>
+        </div>
+        <h3>Tentativas que exigem acompanhamento</h3>
+        <p ng-if="!vm.diagnostic.unresolved.length">Nenhuma tentativa pendente ou desconhecida.</p>
+        <div
+          class="channel-unresolved"
+          ng-repeat="row in vm.diagnostic.unresolved track by row.id"
+        >
+          <code>{{row.id}}</code>
+          <span>{{row.status}} · {{row.createdAt | date:'dd/MM HH:mm'}}</span>
+        </div>
+      </div>
+    </div>
+  </app-modal>
+  <app-modal
+    open="!!vm.form"
+    title="Novo canal"
+    busy="vm.busy"
+    on-close="vm.form=null"
+  >
+    <form
+      ng-submit="vm.create()"
+      class="channel-form"
+    >
+      <p>As credenciais permanecem no servidor. Nenhum token é cadastrado neste formulário.</p>
+      <p
+        ng-if="vm.error"
+        role="alert"
+      >
+        {{vm.error}}
+      </p>
+      <label>
+        Nome
+        <input
+          ng-model="vm.form.name"
+          maxlength="120"
+          required
+        />
+      </label>
+      <label>
+        Provider
+        <select ng-model="vm.form.provider">
+          <option>EVOLUTION</option>
+        </select>
+      </label>
+      <label>
+        Número do canal (E.164)
+        <input
+          ng-model="vm.form.phoneNumber"
+          placeholder="+12025550190"
+        />
+      </label>
+      <label>
+        Identificador externo da instância
+        <input
+          ng-model="vm.form.externalChannelId"
+          maxlength="255"
+        />
+      </label>
+      <button
+        type="submit"
+        ng-disabled="vm.busy"
+      >
+        Criar canal
+      </button>
+    </form>
+  </app-modal>
+</div>

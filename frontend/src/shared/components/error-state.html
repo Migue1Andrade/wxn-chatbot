@@ -1,0 +1,16 @@
+<div
+  class="product-error"
+  role="alert"
+>
+  <div>
+    <strong>Não foi possível concluir</strong>
+    <p>{{$ctrl.message}}</p>
+  </div>
+  <button
+    type="button"
+    ng-if="$ctrl.onRetry"
+    ng-click="$ctrl.onRetry()"
+  >
+    Tentar novamente
+  </button>
+</div>

@@ -8,20 +8,35 @@ import { matchesConversation } from '../src/features/chats/conversation-filters.
 function createStore() {
   let store;
   const source = readFileSync(
-    new URL('../src/features/chats/chat-state.service.js', import.meta.url), 'utf8',
+    new URL('../src/features/chats/chat-state.service.js', import.meta.url),
+    'utf8',
   ).replace(/^import .*;\n/gm, '');
-  const angular = { module: () => ({ factory: (_name, factory) => { store = factory(); } }) };
+  const angular = {
+    module: () => ({
+      factory: (_name, factory) => {
+        store = factory();
+      },
+    }),
+  };
   vm.runInNewContext(source, { angular, matchesConversation });
   store.state.readerId = 1;
   return store;
 }
 const conversation = (id = 'one', unreadCount = 3) => ({
-  id, unreadCount, status: 'PENDING', version: 1, updatedAt: '2026-10-23T12:00:00Z',
+  id,
+  unreadCount,
+  status: 'PENDING',
+  version: 1,
+  updatedAt: '2026-10-23T12:00:00Z',
 });
-const read = (store) => store.read({
-  memberId: 1, conversationId: 'one', lastReadAt: '2026-10-23T12:00:00Z',
-  throughMessageId: '123', unreadCount: 0,
-});
+const read = (store) =>
+  store.read({
+    memberId: 1,
+    conversationId: 'one',
+    lastReadAt: '2026-10-23T12:00:00Z',
+    throughMessageId: '123',
+    unreadCount: 0,
+  });
 
 test('loading another page preserves the confirmed unread count', () => {
   const store = createStore();
@@ -53,6 +68,9 @@ test('punctuation-only search does not match every phone but still matches liter
   for (const search of ['()', '-', ' ( - ) ']) {
     assert.equal(matchesConversation(row, { filter: 'all', search }), false);
   }
-  assert.equal(matchesConversation({ ...row, displayName: 'Equipe ()' }, { filter: 'all', search: '()' }), true);
+  assert.equal(
+    matchesConversation({ ...row, displayName: 'Equipe ()' }, { filter: 'all', search: '()' }),
+    true,
+  );
   assert.equal(matchesConversation(row, { filter: 'all', search: '+55 (81) 99999-9999' }), true);
 });

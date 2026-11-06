@@ -2,27 +2,20 @@ package com.wxn.chatbot.whatsapp.config;
 
 import com.wxn.chatbot.common.ApiException;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
+@Profile("legacy")
 @ConfigurationProperties(prefix = "wxn.twilio")
 public class TwilioProperties {
 
-    private Long companyId;
     private Long channelId;
     private String channelKey;
     private String accountSid;
     private String authToken;
     private String phoneNumber;
     private String publicBaseUrl;
-
-    public Long getCompanyId() {
-        return companyId;
-    }
-
-    public void setCompanyId(Long value) {
-        companyId = value;
-    }
 
     public Long getChannelId() {
         return channelId;
@@ -74,8 +67,6 @@ public class TwilioProperties {
 
     public void requireConfigured() {
         if (
-            companyId == null ||
-            companyId < 1 ||
             channelId == null ||
             channelId < 1 ||
             blank(channelKey) ||

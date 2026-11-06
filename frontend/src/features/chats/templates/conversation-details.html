@@ -26,12 +26,28 @@
   <dd class="text-slate-700">{{$details.conversation.updatedAt | date:'dd/MM/yyyy HH:mm'}}</dd>
   <dt class="text-slate-400">Última mensagem</dt>
   <dd class="text-slate-700">{{$details.conversation.lastMessageAt | date:'dd/MM/yyyy HH:mm'}}</dd>
-  <dt ng-if="$details.conversation.closedAt" class="text-slate-400">Encerrada</dt>
-  <dd ng-if="$details.conversation.closedAt" class="text-slate-700">
+  <dt
+    ng-if="$details.conversation.closedAt"
+    class="text-slate-400"
+  >
+    Encerrada
+  </dt>
+  <dd
+    ng-if="$details.conversation.closedAt"
+    class="text-slate-700"
+  >
     {{$details.conversation.closedAt | date:'dd/MM/yyyy HH:mm'}}
   </dd>
-  <dt ng-if="$details.conversation.externalChatId" class="text-slate-400">ID externo</dt>
-  <dd ng-if="$details.conversation.externalChatId" class="break-all text-xs text-slate-500">
+  <dt
+    ng-if="$details.conversation.externalChatId"
+    class="text-slate-400"
+  >
+    ID externo
+  </dt>
+  <dd
+    ng-if="$details.conversation.externalChatId"
+    class="break-all text-xs text-slate-500"
+  >
     {{$details.conversation.externalChatId}}
   </dd>
 </dl>

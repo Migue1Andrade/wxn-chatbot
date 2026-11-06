@@ -1,8 +1,10 @@
 package com.wxn.chatbot.member.entity;
 
 import com.wxn.chatbot.common.ActiveStatus;
+import com.wxn.chatbot.department.entity.Department;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
+import java.util.*;
 
 @Entity
 @Table(name = "members")
@@ -12,9 +14,6 @@ public class Member {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
-
-    @Column(name = "company_id")
-    private Long companyId;
 
     @Column(name = "user_id")
     private Long userId;
@@ -39,10 +38,29 @@ public class Member {
     @Column(name = "deleted_at")
     private OffsetDateTime deletedAt;
 
+    @ManyToMany
+    @JoinTable(
+        name = "member_departments",
+        joinColumns = @JoinColumn(name = "member_id"),
+        inverseJoinColumns = @JoinColumn(name = "department_id")
+    )
+    private Set<Department> departments = new LinkedHashSet<>();
+
+    public Set<Department> getDepartments() {
+        return Collections.unmodifiableSet(departments);
+    }
+
+    public void update(String name, ActiveStatus status, Set<Department> departments) {
+        this.name = name.trim();
+        this.status = status;
+        this.departments.clear();
+        this.departments.addAll(departments);
+        this.updatedAt = OffsetDateTime.now();
+    }
+
     protected Member() {}
 
-    public Member(Long companyId, Long userId, String name, MemberType type, ActiveStatus status) {
-        this.companyId = companyId;
+    public Member(Long userId, String name, MemberType type, ActiveStatus status) {
         this.userId = userId;
         this.name = name;
         this.type = type;
@@ -52,10 +70,6 @@ public class Member {
 
     public Long getId() {
         return id;
-    }
-
-    public Long getCompanyId() {
-        return companyId;
     }
 
     public Long getUserId() {

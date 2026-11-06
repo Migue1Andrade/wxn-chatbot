@@ -1,4 +1,7 @@
-<ul class="px-2 py-2" aria-label="Lista de conversas">
+<ul
+  class="conversation-list"
+  aria-label="Lista de conversas"
+>
   <li ng-repeat="conversation in $ctrl.items track by conversation.id">
     <chat-list-item
       conversation="conversation"

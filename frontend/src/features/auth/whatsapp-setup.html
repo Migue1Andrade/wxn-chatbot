@@ -1,0 +1,96 @@
+<main class="setup-page">
+  <section class="setup-card">
+    <div class="setup-intro">
+      <span class="setup-eyebrow">Configuração inicial</span>
+      <h1>Conecte seu WhatsApp</h1>
+      <p>Vincule o número que será utilizado no atendimento da WXN.</p>
+
+      <ol class="setup-steps">
+        <li>Abra o WhatsApp no celular.</li>
+        <li>
+          Acesse
+          <strong>Dispositivos conectados</strong>
+          .
+        </li>
+        <li>
+          Toque em
+          <strong>Conectar dispositivo</strong>
+          .
+        </li>
+        <li>Aponte a câmera para o QR Code.</li>
+      </ol>
+
+      <label class="setup-token">
+        Token de configuração local
+        <input
+          type="password"
+          ng-model="vm.form.token"
+          autocomplete="off"
+          placeholder="Informe o token definido no backend"
+        />
+      </label>
+      <p class="setup-help">O token não é salvo no navegador e não é a chave da Evolution API.</p>
+    </div>
+
+    <div class="setup-qr-panel">
+      <div
+        class="setup-state"
+        ng-class="'setup-state-' + vm.status.toLowerCase()"
+      >
+        <span class="setup-state-dot"></span>
+        {{vm.status === 'CONNECTED' ? 'WhatsApp conectado' : (vm.result.message || 'Aguardando
+        configuração')}}
+      </div>
+
+      <div
+        class="setup-qr"
+        ng-if="vm.result.qrCode"
+      >
+        <img
+          ng-src="{{vm.result.qrCode}}"
+          alt="QR Code para conectar o WhatsApp"
+        />
+      </div>
+      <div
+        class="setup-qr-empty"
+        ng-if="!vm.result.qrCode && vm.status !== 'CONNECTED'"
+      >
+        <span ng-if="vm.loading">Consultando a Evolution API…</span>
+        <span ng-if="!vm.loading">O QR Code aparecerá aqui após inicializar.</span>
+      </div>
+
+      <p
+        class="setup-connected"
+        ng-if="vm.status === 'CONNECTED'"
+      >
+        Conexão confirmada. Redirecionando para o login…
+      </p>
+      <p
+        class="setup-error"
+        ng-if="vm.error"
+        role="alert"
+      >
+        {{vm.error}}
+      </p>
+
+      <div class="setup-actions">
+        <button
+          type="button"
+          class="setup-primary"
+          ng-click="vm.initialize()"
+          ng-disabled="vm.busy || !vm.form.token"
+        >
+          {{vm.busy ? 'Conectando…' : 'Gerar QR Code'}}
+        </button>
+        <button
+          type="button"
+          class="setup-secondary"
+          ng-click="vm.refresh()"
+          ng-disabled="vm.busy || !vm.form.token"
+        >
+          Atualizar estado
+        </button>
+      </div>
+    </div>
+  </section>
+</main>

@@ -13,9 +13,6 @@ public class Message {
     @Id
     private ObjectId id;
 
-    @Field("companyId")
-    private Long companyId;
-
     @Field("conversationId")
     private ObjectId conversationId;
 
@@ -64,12 +61,189 @@ public class Message {
     @Field("inboundCompleted")
     private Boolean inboundCompleted;
 
+    private long version;
+
+    public long getVersion() {
+        return version;
+    }
+
+    private String externalContactIdentity;
+
+    public String getExternalContactIdentity() {
+        return externalContactIdentity;
+    }
+
+    public void setExternalContactIdentity(String value) {
+        externalContactIdentity = value;
+    }
+
+    private Long actorUserId;
+
+    public Long getActorUserId() {
+        return actorUserId;
+    }
+
+    public void setActorUserId(Long value) {
+        actorUserId = value;
+    }
+
+    private String operationId;
+
+    public String getOperationId() {
+        return operationId;
+    }
+
+    public void setOperationId(String value) {
+        operationId = value;
+    }
+
+    private String replyToMessageId;
+
+    public String getReplyToMessageId() {
+        return replyToMessageId;
+    }
+
+    public void setReplyToMessageId(String value) {
+        replyToMessageId = value;
+    }
+
+    private String replyToExternalMessageId;
+
+    public String getReplyToExternalMessageId() {
+        return replyToExternalMessageId;
+    }
+
+    public void setReplyToExternalMessageId(String value) {
+        replyToExternalMessageId = value;
+    }
+
+    private String replyPreview;
+
+    public String getReplyPreview() {
+        return replyPreview;
+    }
+
+    public void setReplyPreview(String value) {
+        replyPreview = value;
+    }
+
+    private String forwardedFromMessageId;
+
+    public String getForwardedFromMessageId() {
+        return forwardedFromMessageId;
+    }
+
+    public void setForwardedFromMessageId(String value) {
+        forwardedFromMessageId = value;
+    }
+
+    private String providerTrackingId;
+
+    public String getProviderTrackingId() {
+        return providerTrackingId;
+    }
+
+    public void setProviderTrackingId(String value) {
+        providerTrackingId = value;
+    }
+
+    private String providerResponseId;
+
+    public String getProviderResponseId() {
+        return providerResponseId;
+    }
+
+    public void setProviderResponseId(String value) {
+        providerResponseId = value;
+    }
+
+    private String origin;
+
+    public String getOrigin() {
+        return origin;
+    }
+
+    public void setOrigin(String value) {
+        origin = value;
+    }
+
+    private OffsetDateTime deletedAt;
+
+    public OffsetDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(OffsetDateTime value) {
+        deletedAt = value;
+    }
+
+    private String deletionIntent;
+
+    public String getDeletionIntent() {
+        return deletionIntent;
+    }
+
+    public void setDeletionIntent(String value) {
+        deletionIntent = value;
+    }
+
+    private Long deletedByUserId;
+
+    public Long getDeletedByUserId() {
+        return deletedByUserId;
+    }
+
+    public void setDeletedByUserId(Long value) {
+        deletedByUserId = value;
+    }
+
+    private String deleteOperationId;
+
+    public String getDeleteOperationId() {
+        return deleteOperationId;
+    }
+
+    public void setDeleteOperationId(String value) {
+        deleteOperationId = value;
+    }
+
+    private String deleteState;
+
+    public String getDeleteState() {
+        return deleteState;
+    }
+
+    public void setDeleteState(String value) {
+        deleteState = value;
+    }
+
     public Boolean getInboundCompleted() {
         return inboundCompleted;
     }
 
     public void setInboundCompleted(Boolean value) {
         inboundCompleted = value;
+    }
+
+    private Document pendingMutation;
+    private String reaction;
+    private String contactReaction;
+    private OffsetDateTime editedAt;
+
+    public Document getPendingMutation() {
+        return pendingMutation;
+    }
+
+    public String getReaction() {
+        return reaction;
+    }
+
+    public String getContactReaction() {
+        return contactReaction;
+    }
+
+    public OffsetDateTime getEditedAt() {
+        return editedAt;
     }
 
     public Message() {}
@@ -80,14 +254,6 @@ public class Message {
 
     public void setId(ObjectId value) {
         id = value;
-    }
-
-    public Long getCompanyId() {
-        return companyId;
-    }
-
-    public void setCompanyId(Long value) {
-        companyId = value;
     }
 
     public ObjectId getConversationId() {

@@ -24,7 +24,6 @@ public final class ConversationManagementDtos {
 
     public record Activity(
         String id,
-        Long companyId,
         String conversationId,
         ConversationActivityType event,
         Long actorMemberId,
@@ -37,7 +36,6 @@ public final class ConversationManagementDtos {
     public record Read(@NotNull @Positive Long memberId, @NotBlank String throughMessageId) {}
 
     public record ReadUpdate(
-        Long companyId,
         String conversationId,
         Long memberId,
         String throughMessageId,

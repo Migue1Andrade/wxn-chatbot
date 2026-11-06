@@ -7,7 +7,7 @@ import java.util.List;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/companies/{companyId}/users")
+@RequestMapping("/api/users")
 public class UserController {
 
     private final UserService service;
@@ -18,15 +18,22 @@ public class UserController {
 
     @PostMapping
     @ResponseStatus(org.springframework.http.HttpStatus.CREATED)
-    public UserDtos.Response create(
-        @PathVariable Long companyId,
-        @Valid @RequestBody UserDtos.Create request
-    ) {
-        return service.create(companyId, request);
+    public UserDtos.Response create(@Valid @RequestBody UserDtos.Create request) {
+        return service.create(request);
+    }
+
+    @PatchMapping("/{id}")
+    public UserDtos.Response update(@PathVariable Long id, @Valid @RequestBody UserDtos.Update request) {
+        return service.update(id, request);
+    }
+
+    @GetMapping("/{id}")
+    public UserDtos.Response get(@PathVariable Long id) {
+        return service.get(id);
     }
 
     @GetMapping
-    public List<UserDtos.Response> list(@PathVariable Long companyId) {
-        return service.list(companyId);
+    public List<UserDtos.Response> list() {
+        return service.list();
     }
 }

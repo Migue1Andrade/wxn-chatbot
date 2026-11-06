@@ -1,0 +1,76 @@
+<div class="flex min-h-screen bg-slate-50 text-slate-800">
+  <management-navigation></management-navigation>
+  <main class="product-page settings-page">
+    <header class="page-heading">
+      <div>
+        <span class="page-eyebrow">WORKSPACE · WXN</span>
+        <h1>Configurações</h1>
+        <p>Personalize sua conta e gerencie a operação da WXN.</p>
+      </div>
+    </header>
+    <label class="directory-search settings-search">
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <circle
+          cx="10.5"
+          cy="10.5"
+          r="6.5"
+        />
+        <path d="m16 16 4 4" />
+      </svg>
+      <input
+        type="search"
+        ng-model="settings.query"
+        ng-change="settings.filter()"
+        placeholder="Buscar configuração…"
+        aria-label="Buscar configuração"
+      />
+    </label>
+    <section
+      ng-repeat="group in settings.groups track by group.name"
+      class="settings-group"
+    >
+      <header>
+        <h2>{{group.name}}</h2>
+        <span>{{group.items.length}} {{group.items.length === 1 ? 'opção' : 'opções'}}</span>
+      </header>
+      <div class="settings-grid">
+        <a
+          ng-repeat="item in group.items track by item.path"
+          ng-href="#!{{item.path}}"
+          class="settings-card"
+        >
+          <span
+            class="settings-icon"
+            aria-hidden="true"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path ng-attr-d="{{item.icon}}" />
+            </svg>
+          </span>
+          <div>
+            <h3>{{item.title}}</h3>
+            <p>{{item.description}}</p>
+          </div>
+          <span
+            class="settings-arrow"
+            aria-hidden="true"
+          >
+            ↗
+          </span>
+        </a>
+      </div>
+    </section>
+    <empty-state
+      ng-if="!settings.total"
+      title="Nenhuma configuração encontrada"
+      description="Tente buscar por setor, equipe, SLA ou respostas rápidas."
+    ></empty-state>
+    <p class="settings-footnote">As opções exibidas respeitam o perfil da sua conta.</p>
+  </main>
+</div>

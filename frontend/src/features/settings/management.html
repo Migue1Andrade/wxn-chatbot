@@ -1,0 +1,340 @@
+<div class="flex min-h-screen bg-slate-50 text-slate-800">
+  <management-navigation></management-navigation>
+  <main
+    class="product-page mx-auto min-w-0 w-full max-w-6xl flex-1 p-6 sm:p-10"
+    ng-class="{'directory-content': true}"
+  >
+    <section ng-if="vm.isDepartments || vm.isMembers">
+      <settings-breadcrumb></settings-breadcrumb>
+      <div
+        class="mb-6 flex items-center justify-between gap-4"
+        ng-class="{'directory-page-heading': true}"
+      >
+        <div>
+          <h1 class="text-2xl font-semibold">{{vm.isDepartments ? 'Setores' : 'Usuários'}}</h1>
+          <p class="directory-page-description">
+            {{vm.isMembers ? 'Gerencie os acessos e os setores da sua equipe.' : 'Organize os departamentos de
+            atendimento.'}}
+          </p>
+        </div>
+        <button
+          type="button"
+          ng-click="vm.edit()"
+          ng-disabled="vm.loading"
+          class="rounded-xl bg-teal-700 px-4 py-2 text-white disabled:opacity-40"
+          ng-class="{'directory-create': true}"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          {{vm.isDepartments ? 'Novo setor' : 'Novo usuário'}}
+        </button>
+      </div>
+      <error-state
+        ng-if="vm.error"
+        message="{{vm.error}}"
+        on-retry="vm.load()"
+      ></error-state>
+      <p
+        ng-if="vm.notice"
+        class="product-success"
+        role="status"
+      >
+        {{vm.notice}}
+      </p>
+      <p
+        ng-if="vm.isMembers && !vm.loading && !vm.departments.length"
+        class="my-4 rounded-xl bg-amber-50 p-4"
+      >
+        Cadastre pelo menos um setor antes de criar atendentes.
+        <a
+          class="font-semibold text-teal-700 underline"
+          href="#!/settings/departments"
+        >
+          Ir para Configurações &gt; Setores
+        </a>
+      </p>
+      <user-directory
+        ng-if="vm.isMembers && (!vm.error || vm.members.length)"
+        users="vm.members"
+        loading="vm.loading"
+        on-edit="vm.edit(user)"
+      ></user-directory>
+      <department-directory
+        ng-if="vm.isDepartments && (!vm.error || vm.departments.length)"
+        departments="vm.departments"
+        loading="vm.loading"
+        on-edit="vm.edit(department)"
+        on-remove="vm.remove(department)"
+        on-members="vm.showMembers(department)"
+      ></department-directory>
+    </section>
+    <app-modal
+      open="!!vm.form"
+      title="{{vm.isDepartments ? 'Setor' : 'Usuário'}}"
+      busy="vm.busy"
+      on-close="vm.form = null"
+    >
+      <form
+        ng-if="vm.form"
+        name="editor"
+        ng-submit="editor.$valid && vm.save()"
+        class="space-y-4"
+        ng-class="{'user-editor': true}"
+      >
+        <p
+          ng-if="vm.error"
+          role="alert"
+          class="text-sm text-red-700"
+        >
+          {{vm.error}}
+        </p>
+        <label class="block">
+          {{vm.isDepartments ? 'Nome' : 'Nome completo *'}}
+          <input
+            ng-model="vm.form.name"
+            required
+            maxlength="200"
+            class="mt-1 w-full rounded-lg border p-2"
+          />
+        </label>
+        <label
+          ng-if="vm.isDepartments"
+          class="block"
+        >
+          Cor
+          <input
+            type="color"
+            ng-model="vm.form.color"
+            required
+            class="mt-1 block h-10 w-full"
+          />
+        </label>
+        <div
+          ng-if="vm.isDepartments"
+          class="user-editor-fields"
+        >
+          <label class="block">
+            Descrição
+            <textarea
+              ng-model="vm.form.description"
+              maxlength="500"
+              rows="3"
+              class="mt-1 w-full rounded-lg border p-2"
+            ></textarea>
+          </label>
+          <label class="block">
+            Status
+            <select
+              ng-model="vm.form.status"
+              class="mt-1 w-full rounded-lg border p-2"
+            >
+              <option value="ACTIVE">Ativo</option>
+              <option value="INACTIVE">Inativo</option>
+            </select>
+          </label>
+        </div>
+        <div
+          ng-if="vm.isMembers"
+          class="user-editor-fields"
+        >
+          <p
+            ng-if="vm.form.registrationIncomplete"
+            class="text-sm text-amber-700"
+          >
+            Complete os dados e defina a senha inicial para habilitar o acesso deste usuário.
+          </p>
+          <label class="block">
+            Nome de usuário *
+            <input
+              name="username"
+              ng-model="vm.form.username"
+              required
+              ng-pattern="/^[A-Za-z0-9_.-]{3,100}$/"
+              maxlength="100"
+              autocomplete="off"
+              class="mt-1 w-full rounded-lg border p-2"
+            />
+          </label>
+          <label class="block">
+            E-mail *
+            <input
+              type="email"
+              name="email"
+              ng-model="vm.form.email"
+              required
+              maxlength="254"
+              class="mt-1 w-full rounded-lg border p-2"
+            />
+            <span
+              ng-if="editor.email.$touched && editor.email.$error.email"
+              class="text-sm text-red-700"
+            >
+              Informe um e-mail válido.
+            </span>
+          </label>
+          <label class="block">
+            CPF *
+            <input
+              name="cpf"
+              cpf-input
+              ng-model="vm.form.cpf"
+              required
+              inputmode="numeric"
+              maxlength="14"
+              placeholder="000.000.000-00"
+              class="mt-1 w-full rounded-lg border p-2"
+            />
+            <span
+              ng-if="editor.cpf.$touched && editor.cpf.$error.cpf"
+              class="text-sm text-red-700"
+            >
+              CPF inválido. Verifique os dígitos informados.
+            </span>
+          </label>
+          <label class="block">
+            Perfil *
+            <select
+              ng-model="vm.form.role"
+              required
+              class="mt-1 w-full rounded-lg border p-2"
+            >
+              <option value="ADMIN">Administrador</option>
+              <option value="ATTENDANT">Atendente</option>
+            </select>
+          </label>
+          <div
+            ng-if="vm.needsPassword()"
+            class="user-editor-passwords"
+          >
+            <label class="block">
+              Senha inicial *
+              <input
+                type="password"
+                ng-model="vm.form.password"
+                required
+                minlength="8"
+                maxlength="72"
+                autocomplete="new-password"
+                class="mt-1 w-full rounded-lg border p-2"
+              />
+            </label>
+            <label class="block">
+              Confirmar senha *
+              <input
+                type="password"
+                ng-model="vm.form.passwordConfirmation"
+                required
+                autocomplete="new-password"
+                class="mt-1 w-full rounded-lg border p-2"
+              />
+            </label>
+            <p
+              ng-if="vm.form.passwordConfirmation && vm.form.password !== vm.form.passwordConfirmation"
+              class="text-sm text-red-700"
+            >
+              A confirmação de senha não coincide.
+            </p>
+          </div>
+          <label class="block">
+            Telefone (opcional)
+            <input
+              type="tel"
+              ng-model="vm.form.phone"
+              maxlength="40"
+              class="mt-1 w-full rounded-lg border p-2"
+            />
+          </label>
+          <label class="block">
+            Status
+            <select
+              ng-model="vm.form.accountStatus"
+              class="mt-1 w-full rounded-lg border p-2"
+            >
+              <option value="ACTIVE">Ativo</option>
+              <option value="INACTIVE">Inativo</option>
+            </select>
+          </label>
+          <fieldset>
+            <legend class="mb-2">
+              Setores {{vm.form.role === 'ATTENDANT' ? '(selecione pelo menos um)' : '(opcional)'}}
+            </legend>
+            <department-select
+              departments="vm.departments"
+              selected="vm.form.departmentIds"
+            ></department-select>
+          </fieldset>
+        </div>
+        <button
+          type="submit"
+          ng-disabled="vm.busy || editor.$invalid || (vm.isMembers && vm.form.role === 'ATTENDANT' && !vm.form.departmentIds.length) || (vm.isMembers && vm.needsPassword() && vm.form.password !== vm.form.passwordConfirmation)"
+          class="rounded-xl bg-teal-700 px-4 py-2 text-white disabled:opacity-40"
+        >
+          {{vm.busy ? 'Salvando…' : 'Salvar'}}
+        </button>
+      </form>
+    </app-modal>
+    <app-modal
+      open="!!vm.membersPanel"
+      title="Integrantes de {{vm.membersPanel.name}}"
+      on-close="vm.membersPanel = null"
+    >
+      <p
+        ng-if="vm.membersLoading"
+        role="status"
+      >
+        Carregando integrantes…
+      </p>
+      <p
+        class="text-sm text-red-700"
+        ng-if="vm.membersError"
+        role="alert"
+      >
+        {{vm.membersError}}
+      </p>
+      <ul class="space-y-3">
+        <li
+          ng-repeat="member in vm.departmentMembers track by member.id"
+          class="flex justify-between gap-3 border-b border-slate-100 py-3 text-sm"
+        >
+          <span>{{member.name}}</span>
+          <span class="text-xs text-slate-500">
+            {{member.type}} · {{member.status === 'ACTIVE' ? 'Ativo' : 'Inativo'}}
+          </span>
+        </li>
+      </ul>
+      <p ng-if="!vm.membersLoading && !vm.membersError && !vm.departmentMembers.length">
+        Nenhum integrante vinculado.
+      </p>
+    </app-modal>
+    <app-modal
+      open="!!vm.deleting"
+      title="Excluir setor"
+      busy="vm.busy"
+      on-close="vm.deleting = null"
+    >
+      <p>Excluir o setor {{vm.deleting.name}}?</p>
+      <p class="mt-2 text-sm text-slate-500">
+        A exclusão é lógica. Setores com integrantes ou histórico de atendimento serão preservados.
+      </p>
+      <p
+        ng-if="vm.error"
+        role="alert"
+        class="my-3 text-red-700"
+      >
+        {{vm.error}}
+      </p>
+      <button
+        type="button"
+        ng-click="vm.confirmDelete()"
+        ng-disabled="vm.busy"
+        class="mt-4 rounded-xl bg-red-700 px-4 py-2 text-white"
+      >
+        Excluir
+      </button>
+    </app-modal>
+  </main>
+</div>

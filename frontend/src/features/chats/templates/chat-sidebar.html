@@ -1,47 +1,29 @@
-<header class="border-b border-slate-100 px-6 pb-5 pt-6">
-  <div class="flex items-center justify-between">
-    <a href="#!/" class="flex items-center gap-3" aria-label="WXN atendimento">
-      <span
-        class="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-700 text-sm font-bold tracking-wider text-white"
-      >
-        W
-      </span>
-      <span class="text-lg font-bold tracking-tight">
-        WXN
-        <span class="ml-2 text-xs font-normal text-slate-400">atendimento</span>
-      </span>
-    </a>
-    <span
-      class="h-9 w-9 rounded-full bg-slate-100 text-center text-xs font-semibold leading-9 text-slate-600"
-      title="{{$ctrl.member.member.name || 'Atendente'}}"
+<header class="inbox-header">
+  <div class="inbox-heading">
+    <div>
+      <h1>Conversas</h1>
+      <p>Caixa de entrada do WhatsApp</p>
+    </div>
+    <button
+      type="button"
+      class="filter-toggle"
+      ng-class="{'is-active': $ctrl.filtersOpen}"
+      ng-click="$ctrl.filtersOpen = !$ctrl.filtersOpen"
+      aria-label="Filtros e atendente"
+      aria-expanded="{{$ctrl.filtersOpen || false}}"
+      aria-controls="inbox-filters"
+      title="Filtros e atendente"
     >
-      {{$ctrl.member.member.name ? $ctrl.member.member.name.slice(0,2).toUpperCase() : 'WX'}}
-    </span>
+      <svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10m-7 6h4" /></svg>
+    </button>
   </div>
-  <div class="mt-6 flex items-center justify-between">
-    <h1 class="text-xl font-semibold tracking-tight">
-      Conversas
-      <span class="ml-1 text-sm font-normal text-slate-400">{{$ctrl.state.conversations.length}}</span>
-    </h1>
-    <span class="flex items-center gap-1.5 text-xs text-slate-500" role="status">
-      <span
-        class="h-1.5 w-1.5 rounded-full"
-        ng-class="{'bg-teal-500': $ctrl.socket.connected, 'bg-amber-400': !$ctrl.socket.connected}"
-      ></span>
-      {{$ctrl.socket.connected ? 'Conectado' : ($ctrl.socket.connecting ? 'Reconectando' : 'Desconectado')}}
-    </span>
-  </div>
-  <label class="mt-4 flex items-center gap-3 rounded-xl bg-slate-100 px-3.5 py-3 text-slate-400">
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.8"
-      aria-hidden="true"
-    >
-      <circle cx="11" cy="11" r="7" />
+  <label class="inbox-search">
+    <svg viewBox="0 0 24 24">
+      <circle
+        cx="10.5"
+        cy="10.5"
+        r="6.5"
+      />
       <path d="m16 16 4 4" />
     </svg>
     <input
@@ -49,28 +31,32 @@
       ng-model="$ctrl.query"
       ng-change="$ctrl.onSearch()"
       maxlength="100"
-      placeholder="Nome, telefone ou ID"
+      placeholder="Buscar por nome, telefone ou ID"
       aria-label="Buscar conversa"
-      class="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
     />
   </label>
-</header>
-<section class="space-y-4 border-b border-slate-100 px-6 py-4" aria-label="Filtros de atendimento">
-  <div>
-    <p class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Fila de atendimento</p>
-    <div class="grid grid-cols-3 gap-1.5" role="group" aria-label="Filtrar conversas">
-      <button
-        type="button"
-        ng-repeat="filter in $ctrl.filters track by filter.value"
-        ng-click="$ctrl.onFilter({filter: filter.value})"
-        aria-pressed="{{$ctrl.state.filter === filter.value}}"
-        class="min-h-10 rounded-lg border px-2 py-2 text-[11px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-teal-600"
-        ng-class="{'border-teal-700 bg-teal-700 text-white shadow-sm': $ctrl.state.filter === filter.value, 'border-slate-200 bg-white text-slate-600 hover:border-teal-300 hover:bg-teal-50': $ctrl.state.filter !== filter.value}"
-      >
-        {{filter.label}}
-      </button>
-    </div>
+  <div
+    class="inbox-tabs"
+    role="group"
+    aria-label="Filtrar conversas"
+  >
+    <button
+      type="button"
+      ng-repeat="filter in $ctrl.filters track by filter.value"
+      ng-click="$ctrl.onFilter({filter: filter.value})"
+      aria-pressed="{{$ctrl.state.filter === filter.value}}"
+      ng-class="{'is-active': $ctrl.state.filter === filter.value}"
+    >
+      {{filter.value === 'all' ? 'Todos' : (filter.value === 'pending' ? 'Aguardando' : filter.label)}}
+    </button>
   </div>
+</header>
+<section
+  id="inbox-filters"
+  ng-if="$ctrl.filtersOpen"
+  class="inbox-filters space-y-4 border-b border-slate-100 px-6 py-4"
+  aria-label="Filtros de atendimento"
+>
   <label class="block text-xs font-medium text-slate-600">
     Responsável pela conversa
     <select
@@ -101,11 +87,23 @@
     <p class="mt-1.5 text-[10px] leading-4 text-teal-700">Define suas conversas e mensagens não lidas.</p>
   </div>
 </section>
-<div ng-if="$ctrl.state.error" class="m-4 rounded-xl bg-red-50 p-4 text-sm text-red-700" role="alert">
+<div
+  ng-if="$ctrl.state.error"
+  class="m-4 rounded-xl bg-red-50 p-4 text-sm text-red-700"
+  role="alert"
+>
   {{$ctrl.state.error}}
-  <button class="mt-2 block font-semibold underline" ng-click="$ctrl.onRetry()">Tentar novamente</button>
+  <button
+    class="mt-2 block font-semibold underline"
+    ng-click="$ctrl.onRetry()"
+  >
+    Tentar novamente
+  </button>
 </div>
-<loading-state ng-if="$ctrl.state.loading" label="Carregando conversas"></loading-state>
+<loading-state
+  ng-if="$ctrl.state.loading"
+  label="Carregando conversas"
+></loading-state>
 <chat-list
   class="min-h-0 flex-1 overflow-y-auto"
   items="$ctrl.state.conversations"
@@ -147,9 +145,26 @@
   class="mx-6 mb-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-700"
 >
   {{$ctrl.contextError}}
-  <button type="button" ng-click="$ctrl.onRetry()" class="ml-2 underline">Atualizar</button>
+  <button
+    type="button"
+    ng-click="$ctrl.onRetry()"
+    class="ml-2 underline"
+  >
+    Atualizar
+  </button>
 </div>
-<footer class="flex items-center gap-2 border-t border-slate-100 px-6 py-4 text-xs text-slate-400">
-  <span class="h-1.5 w-1.5 rounded-full bg-teal-500"></span>
-  Ambiente de desenvolvimento
+<footer class="inbox-footer">
+  <span
+    class="connection-state"
+    role="status"
+  >
+    <i ng-class="{'is-connected': $ctrl.socket.connected}"></i>
+    {{$ctrl.socket.connected ? 'Conectado' : ($ctrl.socket.connecting ? 'Reconectando…' : 'Desconectado')}}
+  </span>
+  <span
+    class="inbox-agent"
+    title="{{$ctrl.member.member.name}}"
+  >
+    {{$ctrl.member.member.name || 'Selecione um atendente nos filtros'}}
+  </span>
 </footer>

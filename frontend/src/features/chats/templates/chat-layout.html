@@ -1,6 +1,10 @@
-<div class="flex h-dvh min-h-0 bg-slate-50 text-slate-800" ng-class="{'chat-open': vm.mobileOpen}">
+<div
+  class="chat-workspace"
+  ng-class="{'chat-open': vm.mobileOpen}"
+>
+  <management-navigation on-filter="vm.changeFilter(filter)"></management-navigation>
   <chat-sidebar
-    class="chat-sidebar flex min-h-0 w-full shrink-0 flex-col border-r border-slate-200 bg-white md:w-[360px] lg:w-[390px]"
+    class="chat-sidebar"
     state="vm.state"
     socket="vm.socket"
     member="vm.member"
@@ -16,7 +20,19 @@
     context-error="vm.contextError"
     on-reconnect="vm.reconnect()"
   ></chat-sidebar>
-  <main class="chat-main flex min-w-0 flex-1 flex-col" aria-label="Conversa">
+  <button
+    ng-if="vm.state.selected"
+    type="button"
+    class="team-panel-toggle"
+    ng-click="vm.teamOpen = !vm.teamOpen"
+    aria-label="Abrir ou fechar painel da equipe"
+  >
+    Equipe
+  </button>
+  <main
+    class="chat-main flex min-w-0 flex-1 flex-col"
+    aria-label="Conversa"
+  >
     <div
       ng-if="!vm.state.selected"
       class="flex h-full flex-col items-center justify-center gap-5 px-8 text-center"
@@ -49,7 +65,7 @@
     <section
       ng-if="vm.state.selected"
       ng-controller="MessagesController as messages"
-      class="flex min-h-0 flex-1 flex-col"
+      class="chat-session"
     >
       <chat-header
         members="vm.member.members"
@@ -57,6 +73,8 @@
         actor="vm.member.member"
         conversation="vm.state.selected"
         channel-name="{{vm.channelName(vm.state.selected.channelId)}}"
+        connection="messages.actions.state.connection"
+        on-refresh-connection="messages.actions.capabilities()"
         on-back="vm.back()"
       ></chat-header>
       <message-list
@@ -65,6 +83,7 @@
         loading="messages.history.loading"
         error="messages.error()"
         conversation-id="vm.state.selected.id"
+        contact-name="{{vm.state.selected.displayName || vm.state.selected.contactPhone}}"
         member-name="messages.memberName(id)"
         events="messages.state.events"
         has-more="messages.state.hasMore"
@@ -72,13 +91,169 @@
         on-load-older="messages.loadOlder()"
         on-retry="messages.reload()"
       ></message-list>
+      <div
+        ng-if="messages.actions.state.notice || messages.actions.state.error"
+        class="px-4 py-2 text-sm"
+        role="status"
+      >
+        <span ng-class="{'text-red-700': messages.actions.state.error}">
+          {{messages.actions.state.error || messages.actions.state.notice}}
+        </span>
+        <button
+          type="button"
+          ng-click="messages.actions.state.error = ''; messages.actions.state.notice = ''"
+          aria-label="Fechar aviso"
+        >
+          ×
+        </button>
+      </div>
+      <app-modal
+        open="!!messages.actions.state.forwarding"
+        title="Encaminhar mensagem"
+        busy="messages.actions.state.loading"
+        on-close="messages.actions.state.forwarding = null"
+      >
+        <p class="mb-3 text-sm text-slate-500">Escolha um atendimento aberto no mesmo canal.</p>
+        <select
+          ng-model="messages.actions.state.destinationId"
+          ng-options="c.id as (c.displayName || c.contactPhone) for c in messages.actions.state.destinations"
+          class="w-full rounded-lg border p-3"
+          ng-disabled="messages.actions.state.loading"
+        >
+          <option value="">Selecione o destino</option>
+        </select>
+        <button
+          type="button"
+          ng-if="messages.actions.state.more"
+          ng-disabled="messages.actions.state.loadingDestinations"
+          ng-click="messages.actions.loadDestinations()"
+          class="mt-2 text-teal-700"
+        >
+          Carregar mais destinos
+        </button>
+        <p
+          ng-if="messages.actions.state.error"
+          role="alert"
+          class="mt-3 text-sm text-red-700"
+        >
+          {{messages.actions.state.error}}
+        </p>
+        <button
+          type="button"
+          ng-click="messages.actions.performForward()"
+          ng-disabled="messages.actions.state.loading || !messages.actions.state.destinationId"
+          class="mt-4 rounded-lg bg-teal-700 px-4 py-2 text-white disabled:opacity-40"
+        >
+          {{messages.actions.state.loading ? 'Encaminhando…' : 'Encaminhar'}}
+        </button>
+      </app-modal>
+      <app-modal
+        open="!!messages.actions.state.mutating"
+        title="Operação da mensagem"
+        busy="messages.actions.state.loading"
+        on-close="messages.actions.state.mutating=null"
+      >
+        <form ng-submit="messages.actions.performMutation()">
+          <label
+            ng-if="messages.actions.state.mutating.operation === 'EDIT_TEXT'"
+            class="block text-sm"
+          >
+            Editar texto enviado
+            <textarea
+              class="mt-3 w-full rounded-lg border p-3"
+              ng-model="messages.actions.state.mutating.value"
+              maxlength="1600"
+              required
+              rows="4"
+            ></textarea>
+          </label>
+          <label
+            ng-if="messages.actions.state.mutating.operation === 'SEND_REACTION'"
+            class="block text-sm"
+          >
+            Reação do número conectado
+            <select
+              class="mt-3 w-full rounded-lg border p-3"
+              ng-model="messages.actions.state.mutating.value"
+            >
+              <option>👍</option>
+              <option>❤️</option>
+              <option>😂</option>
+              <option>😮</option>
+              <option>😢</option>
+              <option>🙏</option>
+            </select>
+          </label>
+          <p class="text-sm text-slate-500 mt-3">
+            {{messages.actions.state.mutating.operation === 'MARK_READ' ? 'Confirmar leitura desta mensagem no
+            WhatsApp? Esta ação afeta o número conectado, não apenas sua visualização na WXN.' :
+            messages.actions.state.mutating.operation === 'REMOVE_REACTION' ? 'Remover a reação do número
+            conectado?' : 'O conteúdo confirmado será atualizado após a confirmação da operação. Não repita
+            operações incertas.'}}
+          </p>
+          <p
+            ng-if="messages.actions.state.error"
+            class="mt-3 text-sm text-red-700"
+            role="alert"
+          >
+            {{messages.actions.state.error}}
+          </p>
+          <button
+            type="submit"
+            class="mt-4 rounded-lg bg-teal-700 px-4 py-2 text-white"
+            ng-disabled="messages.actions.state.loading"
+          >
+            {{messages.actions.state.loading ? 'Executando…' : 'Confirmar operação'}}
+          </button>
+        </form>
+      </app-modal>
+      <app-modal
+        open="!!messages.actions.state.deleting"
+        title="Apagar mensagem"
+        busy="messages.actions.state.loading"
+        on-close="messages.actions.state.deleting = null"
+      >
+        <p class="text-sm">
+          {{messages.actions.state.deleteIntent === 'DELETE_FOR_ME' ? 'Apagar para mim remove a mensagem da
+          conta WhatsApp compartilhada por todos os atendentes. Não é uma ocultação privada.' : 'Apagar esta
+          mensagem para todos no WhatsApp? O registro de auditoria será preservado.'}}
+        </p>
+        <p
+          ng-if="messages.actions.state.error"
+          role="alert"
+          class="mt-3 text-sm text-red-700"
+        >
+          {{messages.actions.state.error}}
+        </p>
+        <button
+          type="button"
+          ng-click="messages.actions.performDelete()"
+          ng-disabled="messages.actions.state.loading"
+          class="mt-4 rounded-lg bg-red-700 px-4 py-2 text-white disabled:opacity-40"
+        >
+          {{messages.actions.state.loading ? 'Apagando…' : 'Confirmar exclusão'}}
+        </button>
+      </app-modal>
       <message-composer
         conversation-id="vm.state.selected.id"
         sending="messages.operation().loading"
-        blocked="!messages.member.member || !vm.channelActive(vm.state.selected.channelId) || vm.state.selected.status === 'CLOSED'"
-        reason="{{messages.member.error || (vm.state.selected.status === 'CLOSED' ? 'Reabra o atendimento para responder.' : '') || (!vm.channelActive(vm.state.selected.channelId) ? 'O canal está indisponível ou inativo.' : '')}}"
-        member-name="{{messages.member.member.name}}"
+        blocked="!messages.actions.supports('SEND_TEXT') || !vm.channelActive(vm.state.selected.channelId) || vm.state.selected.status === 'CLOSED' || vm.state.selected.status === 'RESOLVED'"
+        reason="{{messages.actions.state.unavailableReason || messages.member.error || ((vm.state.selected.status === 'CLOSED' || vm.state.selected.status === 'RESOLVED') ? 'Reabra o atendimento para responder.' : '') || (!vm.channelActive(vm.state.selected.channelId) ? 'O canal está indisponível ou inativo.' : '')}}"
+        member-name="{{messages.actions.actor().name}}"
       ></message-composer>
     </section>
   </main>
+  <div
+    ng-if="vm.teamOpen"
+    class="team-backdrop"
+    ng-click="vm.teamOpen = false"
+  ></div>
+  <team-panel
+    focus-region="vm.teamOpen"
+    on-region-close="vm.teamOpen = false"
+    on-close="vm.teamOpen = false"
+    ng-if="vm.state.selected"
+    conversation="vm.state.selected"
+    ng-class="{'team-visible':vm.teamOpen}"
+  ></team-panel>
 </div>

@@ -5,6 +5,9 @@ import java.util.*;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface WhatsAppChannelRepository extends JpaRepository<WhatsAppChannel, Long> {
-    Optional<WhatsAppChannel> findByIdAndCompanyIdAndDeletedAtIsNull(Long id, Long companyId);
-    List<WhatsAppChannel> findByCompanyIdAndDeletedAtIsNullOrderById(Long companyId);
+    Optional<WhatsAppChannel> findByIdAndDeletedAtIsNull(Long id);
+    Optional<WhatsAppChannel> findFirstByProviderAndDeletedAtIsNullOrderById(
+        com.wxn.chatbot.whatsapp.model.ProviderType provider
+    );
+    List<WhatsAppChannel> findByDeletedAtIsNullOrderById();
 }

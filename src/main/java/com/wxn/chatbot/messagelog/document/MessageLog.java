@@ -13,9 +13,6 @@ public class MessageLog {
     @Id
     private ObjectId id;
 
-    @Field("companyId")
-    private Long companyId;
-
     @Field("messageId")
     private ObjectId messageId;
 
@@ -48,6 +45,16 @@ public class MessageLog {
         eventKey = value;
     }
 
+    private org.bson.Document echo;
+
+    public org.bson.Document getEcho() {
+        return echo;
+    }
+
+    public void setEcho(org.bson.Document value) {
+        echo = value;
+    }
+
     public MessageLog() {}
 
     public ObjectId getId() {
@@ -56,14 +63,6 @@ public class MessageLog {
 
     public void setId(ObjectId value) {
         id = value;
-    }
-
-    public Long getCompanyId() {
-        return companyId;
-    }
-
-    public void setCompanyId(Long value) {
-        companyId = value;
     }
 
     public ObjectId getMessageId() {

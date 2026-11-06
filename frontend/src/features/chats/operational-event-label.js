@@ -10,6 +10,12 @@ export function operationalEventLabel(event, memberName) {
       return (
         'Transferido de ' + memberName(event.previousMemberId) + ' para ' + memberName(event.newMemberId)
       );
+    case 'CONVERSATION_RESOLVED':
+      return 'Atendimento resolvido';
+    case 'CONVERSATION_PRIORITY_CHANGED':
+      return 'Prioridade alterada';
+    case 'CONVERSATION_STATUS_CHANGED':
+      return 'Status do atendimento alterado';
     case 'CONVERSATION_CLOSED':
       return 'Atendimento encerrado por ' + memberName(event.actorMemberId);
     case 'CONVERSATION_REOPENED':

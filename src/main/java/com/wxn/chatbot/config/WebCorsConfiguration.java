@@ -18,8 +18,9 @@ public class WebCorsConfiguration implements WebMvcConfigurer {
         registry
             .addMapping("/api/**")
             .allowedOrigins(origin)
-            .allowedMethods("GET", "POST", "PATCH", "OPTIONS")
-            .allowedHeaders("Content-Type", "X-Dev-Api-Key")
+            .allowedMethods("GET", "POST", "PATCH", "DELETE", "OPTIONS")
+            .allowCredentials(true)
+            .allowedHeaders("Content-Type", "X-Dev-Api-Key", "X-CSRF-Token")
             .maxAge(3600);
     }
 }

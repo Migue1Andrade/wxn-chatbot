@@ -1,28 +1,198 @@
 <div
-  class="mb-3 flex"
-  ng-class="{'justify-end': $ctrl.message.direction === 'OUTBOUND', 'justify-start': $ctrl.message.direction !== 'OUTBOUND'}"
+  class="message-row"
+  ng-class="{'is-outbound': $ctrl.message.direction === 'OUTBOUND'}"
 >
-  <article
-    class="min-w-24 max-w-[90%] rounded-2xl border px-4 py-2.5 shadow-sm sm:max-w-[75%] lg:max-w-[65%]"
-    ng-class="{'bg-teal-50 border-teal-200/70 rounded-tr-sm': $ctrl.message.direction === 'OUTBOUND', 'bg-white border-slate-200/80 rounded-tl-sm': $ctrl.message.direction !== 'OUTBOUND'}"
+  <span
+    ng-if="$ctrl.message.direction !== 'OUTBOUND'"
+    class="contact-avatar message-avatar"
+    ng-class="'avatar-' + $ctrl.tone($ctrl.contactName)"
   >
+    {{$ctrl.initials($ctrl.contactName)}}
+  </span>
+  <article class="message-card">
+    <button
+      type="button"
+      ng-if="!$ctrl.message.deletedAt && $ctrl.message.messageType === 'TEXT'"
+      class="message-actions-trigger"
+      aria-label="Ações da mensagem"
+      aria-expanded="{{$ctrl.showMenu}}"
+      ng-click="$ctrl.openMenu($event)"
+    >
+      ⌄
+    </button>
+    <div
+      ng-if="$ctrl.showMenu && $ctrl.actions.state.menuMessageId === $ctrl.message.id"
+      class="message-actions-menu"
+      ng-style="$ctrl.menuStyle"
+      role="menu"
+    >
+      <button
+        type="button"
+        role="menuitem"
+        ng-click="$ctrl.act('copy')"
+      >
+        Copiar
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        ng-if="$ctrl.actions.allowed($ctrl.message, 'REPLY_TEXT')"
+        ng-click="$ctrl.act('reply')"
+      >
+        Responder
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        ng-if="$ctrl.actions.allowed($ctrl.message, 'FORWARD_TEXT')"
+        ng-click="$ctrl.act('forward')"
+      >
+        Encaminhar
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        ng-if="$ctrl.actions.allowed($ctrl.message, 'EDIT_TEXT')"
+        ng-click="$ctrl.act('edit')"
+      >
+        Editar texto
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        ng-if="$ctrl.actions.allowed($ctrl.message, 'SEND_REACTION')"
+        ng-click="$ctrl.act('react')"
+      >
+        Reagir
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        ng-if="$ctrl.message.reaction && $ctrl.actions.allowed($ctrl.message, 'REMOVE_REACTION')"
+        ng-click="$ctrl.act('removeReaction')"
+      >
+        Remover reação do número conectado
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        ng-if="$ctrl.actions.allowed($ctrl.message, 'MARK_READ')"
+        ng-click="$ctrl.act('markRead')"
+      >
+        Confirmar leitura no WhatsApp
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        ng-if="$ctrl.actions.writable() && $ctrl.message.direction === 'OUTBOUND'"
+        ng-click="$ctrl.act('reuse')"
+      >
+        Reutilizar texto
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        ng-if="$ctrl.actions.allowed($ctrl.message, 'DELETE_FOR_EVERYONE')"
+        ng-click="$ctrl.act('remove', 'DELETE_FOR_EVERYONE')"
+      >
+        Apagar para todos
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        ng-if="$ctrl.actions.allowed($ctrl.message, 'DELETE_FOR_ME')"
+        ng-click="$ctrl.act('remove', 'DELETE_FOR_ME')"
+      >
+        Apagar na conta WhatsApp
+      </button>
+    </div>
+    <p
+      ng-if="$ctrl.message.forwardedFromMessageId"
+      class="text-xs text-slate-500"
+    >
+      ↪ Encaminhada
+    </p>
+    <button
+      type="button"
+      ng-if="($ctrl.message.replyToMessageId || $ctrl.message.replyToExternalMessageId) && !$ctrl.message.deletedAt"
+      class="message-quote"
+      ng-click="$ctrl.locate()"
+    >
+      {{$ctrl.message.replyPreview || 'Mensagem citada'}}
+    </button>
+    <p
+      ng-if="$ctrl.message.deletedAt"
+      class="italic text-slate-500"
+    >
+      {{$ctrl.message.deletionIntent === 'DELETE_FOR_ME' ? 'Apagada na conta WhatsApp compartilhada' :
+      'Mensagem apagada para todos'}}
+    </p>
+    <p
+      ng-if="$ctrl.message.deleteState && !$ctrl.message.deletedAt"
+      class="text-xs text-amber-700"
+    >
+      Exclusão: {{$ctrl.message.deleteState}}
+    </p>
+    <p
+      ng-if="$ctrl.message.origin === 'WHATSAPP_APP' || $ctrl.message.origin === 'WHATSAPP_EXTERNAL'"
+      class="message-author"
+    >
+      Enviada fora da WXN
+    </p>
     <p
       ng-if="$ctrl.message.direction === 'OUTBOUND' && $ctrl.message.memberId"
-      class="mb-1 text-[10px] font-semibold text-teal-700"
+      class="message-author"
     >
+      <svg viewBox="0 0 24 24">
+        <rect
+          x="4"
+          y="7"
+          width="16"
+          height="13"
+          rx="3"
+        />
+        <path d="M12 7V3M8 12h1m6 0h1M8 16h8" />
+      </svg>
       {{$ctrl.memberName}}
     </p>
     <p
-      class="whitespace-pre-wrap [overflow-wrap:anywhere] text-sm leading-relaxed text-slate-800"
+      ng-if="!$ctrl.message.deletedAt"
+      class="message-text"
       ng-bind="$ctrl.message.content.text || ($ctrl.message.messageType === 'MEDIA' ? 'Anexo recebido' : '')"
     ></p>
-    <div class="mt-1.5 flex flex-wrap items-center justify-end gap-2 text-[10px] text-slate-500">
+    <div
+      class="message-reactions"
+      ng-if="!$ctrl.message.deletedAt && ($ctrl.message.reaction || $ctrl.message.contactReaction)"
+    >
+      <span
+        ng-if="$ctrl.message.reaction"
+        title="Reação do número conectado"
+      >
+        {{$ctrl.message.reaction}}
+      </span>
+      <span
+        ng-if="$ctrl.message.contactReaction"
+        title="Reação do contato"
+      >
+        {{$ctrl.message.contactReaction}}
+      </span>
+    </div>
+    <p
+      class="message-operation-state"
+      ng-if="$ctrl.message.pendingMutation && ['PENDING','ACCEPTED','UNKNOWN','FAILED'].includes($ctrl.message.pendingMutation.state)"
+    >
+      {{$ctrl.message.pendingMutation.state === 'UNKNOWN' ? 'Operação sem confirmação — não repita
+      automaticamente' : $ctrl.message.pendingMutation.state === 'FAILED' ? 'Operação não concluída' :
+      'Operação aguardando confirmação'}}
+    </p>
+    <div class="message-meta">
       <span
         ng-if="$ctrl.message.simulated && $ctrl.message.direction !== 'OUTBOUND'"
-        class="rounded bg-slate-100 px-1.5 py-0.5 text-slate-500"
+        class="mock-label"
       >
         Mock
       </span>
+      <span ng-if="$ctrl.message.editedAt">Editada ·</span>
       <time>{{$ctrl.message.createdAt | date:'HH:mm'}}</time>
       <span
         ng-if="$ctrl.message.direction === 'OUTBOUND'"

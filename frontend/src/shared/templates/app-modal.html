@@ -4,13 +4,20 @@
   class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-4 backdrop-blur-sm"
 >
   <section
+    focus-region="$modal.open"
+    on-region-close="$modal.close()"
     role="dialog"
     aria-modal="true"
     aria-labelledby="{{$modal.titleId}}"
     class="flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
   >
     <header class="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4">
-      <h3 id="{{$modal.titleId}}" class="text-base font-semibold text-slate-800">{{$modal.title}}</h3>
+      <h3
+        id="{{$modal.titleId}}"
+        class="text-base font-semibold text-slate-800"
+      >
+        {{$modal.title}}
+      </h3>
       <button
         type="button"
         ng-click="$modal.close()"
@@ -21,6 +28,9 @@
         ×
       </button>
     </header>
-    <div class="overflow-y-auto p-5" ng-transclude></div>
+    <div
+      class="overflow-y-auto p-5"
+      ng-transclude
+    ></div>
   </section>
 </div>

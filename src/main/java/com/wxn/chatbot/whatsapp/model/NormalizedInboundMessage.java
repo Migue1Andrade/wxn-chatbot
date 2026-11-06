@@ -10,8 +10,54 @@ public record NormalizedInboundMessage(
     MessageType messageType,
     Map<String, Object> content,
     Instant occurredAt,
-    String senderDisplayName
+    String senderDisplayName,
+    String replyToExternalMessageId,
+    String externalContactIdentity
 ) {
+    public NormalizedInboundMessage(
+        String externalMessageId,
+        String senderPhone,
+        String recipientPhone,
+        MessageType messageType,
+        Map<String, Object> content,
+        Instant occurredAt,
+        String senderDisplayName,
+        String replyToExternalMessageId
+    ) {
+        this(
+            externalMessageId,
+            senderPhone,
+            recipientPhone,
+            messageType,
+            content,
+            occurredAt,
+            senderDisplayName,
+            replyToExternalMessageId,
+            null
+        );
+    }
+
+    public NormalizedInboundMessage(
+        String externalMessageId,
+        String senderPhone,
+        String recipientPhone,
+        MessageType messageType,
+        Map<String, Object> content,
+        Instant occurredAt,
+        String senderDisplayName
+    ) {
+        this(
+            externalMessageId,
+            senderPhone,
+            recipientPhone,
+            messageType,
+            content,
+            occurredAt,
+            senderDisplayName,
+            null
+        );
+    }
+
     public NormalizedInboundMessage(
         String externalMessageId,
         String senderPhone,

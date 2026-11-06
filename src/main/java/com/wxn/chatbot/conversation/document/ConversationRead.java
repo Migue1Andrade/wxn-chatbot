@@ -11,15 +11,10 @@ public class ConversationRead {
     @Id
     private ObjectId id;
 
-    private Long companyId;
     private ObjectId conversationId;
     private Long memberId;
     private OffsetDateTime lastReadAt;
     private ObjectId throughMessageId;
-
-    public Long getCompanyId() {
-        return companyId;
-    }
 
     public ObjectId getConversationId() {
         return conversationId;

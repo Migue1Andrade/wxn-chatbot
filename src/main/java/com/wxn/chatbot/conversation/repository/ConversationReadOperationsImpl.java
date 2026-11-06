@@ -18,19 +18,9 @@ public class ConversationReadOperationsImpl implements ConversationReadOperation
         this.mongo = mongo;
     }
 
-    public Optional<ConversationRead> advance(
-        Long companyId,
-        ObjectId conversationId,
-        Long memberId,
-        MessageCursor cursor
-    ) {
+    public Optional<ConversationRead> advance(ObjectId conversationId, Long memberId, MessageCursor cursor) {
         Query query = Query.query(
-            Criteria.where("companyId")
-                .is(companyId)
-                .and("conversationId")
-                .is(conversationId)
-                .and("memberId")
-                .is(memberId)
+            Criteria.where("conversationId").is(conversationId).and("memberId").is(memberId)
         ).addCriteria(
             new Criteria().orOperator(
                 Criteria.where("lastReadAt").lt(cursor.timestamp()),
@@ -48,7 +38,6 @@ public class ConversationReadOperationsImpl implements ConversationReadOperation
                     new Update()
                         .set("lastReadAt", cursor.timestamp())
                         .set("throughMessageId", cursor.id())
-                        .setOnInsert("companyId", companyId)
                         .setOnInsert("conversationId", conversationId)
                         .setOnInsert("memberId", memberId),
                     FindAndModifyOptions.options().upsert(true).returnNew(true),
@@ -60,14 +49,12 @@ public class ConversationReadOperationsImpl implements ConversationReadOperation
         }
     }
 
-    public Map<ObjectId, Long> unreadCounts(
-        Long companyId,
-        List<ObjectId> ids,
-        List<ConversationRead> reads
-    ) {
+    public Map<ObjectId, Long> unreadCounts(List<ObjectId> ids, List<ConversationRead> reads) {
         Map<ObjectId, ConversationRead> map = new HashMap<>();
         reads.forEach(r -> map.put(r.getConversationId(), r));
-        if (ids.isEmpty()) return Map.of();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
         List<Document> conditions = new ArrayList<>();
         for (ObjectId id : ids) {
             var read = map.get(id);
@@ -97,9 +84,10 @@ public class ConversationReadOperationsImpl implements ConversationReadOperation
             }
             conditions.add(condition);
         }
-        var match = new Document("companyId", companyId)
-            .append("direction", new Document("$in", List.of("INBOUND", "inbound")))
-            .append("$or", conditions);
+        var match = new Document("direction", new Document("$in", List.of("INBOUND", "inbound"))).append(
+            "$or",
+            conditions
+        );
         Map<ObjectId, Long> counts = new HashMap<>();
         mongo
             .getCollection("messages")

@@ -4,9 +4,9 @@ angular.module('wxn.core').factory('ApiClientService', [
   '$http',
   'environment',
   function ($http, environment) {
-    function get(path, params) {
+    function get(path, params, headers) {
       return $http
-        .get(environment.apiBaseUrl + '/api/companies/' + environment.companyId + path, { params })
+        .get(environment.apiBaseUrl + '/api' + path, { params, headers, timeout: 30000 })
         .then((r) => r.data);
     }
     function allPages(path, params = {}) {
@@ -22,14 +22,22 @@ angular.module('wxn.core').factory('ApiClientService', [
     return {
       get,
       allPages,
-      patch(path, body) {
+      delete(path) {
+        return $http.delete(environment.apiBaseUrl + '/api' + path, { timeout: 30000 }).then((r) => r.data);
+      },
+      put(path, body) {
         return $http
-          .patch(environment.apiBaseUrl + '/api/companies/' + environment.companyId + path, body)
+          .put(environment.apiBaseUrl + '/api' + path, body, { timeout: 30000 })
           .then((r) => r.data);
       },
-      post(path, body) {
+      patch(path, body) {
         return $http
-          .post(environment.apiBaseUrl + '/api/companies/' + environment.companyId + path, body)
+          .patch(environment.apiBaseUrl + '/api' + path, body, { timeout: 30000 })
+          .then((r) => r.data);
+      },
+      post(path, body, headers) {
+        return $http
+          .post(environment.apiBaseUrl + '/api' + path, body, { headers, timeout: 30000 })
           .then((r) => r.data);
       },
     };

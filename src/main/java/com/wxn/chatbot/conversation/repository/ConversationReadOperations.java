@@ -6,15 +6,6 @@ import java.util.*;
 import org.bson.types.ObjectId;
 
 public interface ConversationReadOperations {
-    Optional<ConversationRead> advance(
-        Long companyId,
-        ObjectId conversationId,
-        Long memberId,
-        MessageCursor cursor
-    );
-    Map<ObjectId, Long> unreadCounts(
-        Long companyId,
-        List<ObjectId> conversationIds,
-        List<ConversationRead> reads
-    );
+    Optional<ConversationRead> advance(ObjectId conversationId, Long memberId, MessageCursor cursor);
+    Map<ObjectId, Long> unreadCounts(List<ObjectId> conversationIds, List<ConversationRead> reads);
 }

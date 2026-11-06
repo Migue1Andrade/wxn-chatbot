@@ -7,10 +7,12 @@ import com.wxn.chatbot.whatsapp.config.TwilioProperties;
 import com.wxn.chatbot.whatsapp.entity.WhatsAppChannel;
 import com.wxn.chatbot.whatsapp.provider.TwilioWhatsAppProvider;
 import java.util.Map;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Service
+@Profile("legacy")
 public class TwilioIngressService {
 
     private final TwilioProperties config;
@@ -32,7 +34,9 @@ public class TwilioIngressService {
 
     public void receive(String channelKey, String signature, Map<String, String> form, boolean status) {
         config.requireConfigured();
-        if (!config.getChannelKey().equals(channelKey)) throw ApiException.notFound("Webhook não encontrado");
+        if (!config.getChannelKey().equals(channelKey)) {
+            throw ApiException.notFound("Webhook não encontrado");
+        }
         String url = status ? config.statusUrl() : config.inboundUrl();
         // Use the configured public URL, never untrusted forwarded headers/Host.
         if (
@@ -42,7 +46,7 @@ public class TwilioIngressService {
         ) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Assinatura ou conta Twilio inválida");
         }
-        WhatsAppChannel channel = channels.requireActive(config.getCompanyId(), config.getChannelId());
+        WhatsAppChannel channel = channels.requireActive(config.getChannelId());
         provider.validateChannel(channel);
         if (status) {
             if (
@@ -52,6 +56,8 @@ public class TwilioIngressService {
                 throw ApiException.badRequest("Remetente do callback não corresponde ao canal");
             }
             messages.status(channel, provider.normalizeStatus(form));
-        } else messages.receive(channel, provider.normalizeInbound(form), false);
+        } else {
+            messages.receive(channel, provider.normalizeInbound(form), false);
+        }
     }
 }

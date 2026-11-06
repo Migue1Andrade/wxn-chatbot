@@ -1,7 +1,6 @@
 package com.wxn.chatbot.whatsapp.service;
 
 import com.wxn.chatbot.common.*;
-import com.wxn.chatbot.company.service.CompanyService;
 import com.wxn.chatbot.whatsapp.dto.ChannelDtos;
 import com.wxn.chatbot.whatsapp.entity.WhatsAppChannel;
 import com.wxn.chatbot.whatsapp.mapper.ChannelMapper;
@@ -15,19 +14,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class ChannelService {
 
     private final WhatsAppChannelRepository repository;
-    private final CompanyService companies;
 
-    public ChannelService(WhatsAppChannelRepository repository, CompanyService companies) {
+    public ChannelService(WhatsAppChannelRepository repository) {
         this.repository = repository;
-        this.companies = companies;
     }
 
-    public ChannelDtos.Response create(Long companyId, ChannelDtos.Create request) {
-        companies.require(companyId);
+    public ChannelDtos.Response create(ChannelDtos.Create request) {
         return ChannelMapper.response(
             repository.save(
                 new WhatsAppChannel(
-                    companyId,
                     request.name().trim(),
                     request.provider(),
                     PhoneNumbers.optional(request.phoneNumber()),
@@ -39,26 +34,35 @@ public class ChannelService {
     }
 
     @Transactional(readOnly = true)
-    public WhatsAppChannel require(Long companyId, Long id) {
-        companies.require(companyId);
+    public WhatsAppChannel require(Long id) {
         return repository
-            .findByIdAndCompanyIdAndDeletedAtIsNull(id, companyId)
-            .orElseThrow(() -> ApiException.notFound("Canal não encontrado na empresa"));
+            .findByIdAndDeletedAtIsNull(id)
+            .orElseThrow(() -> ApiException.notFound("Canal não encontrado"));
     }
 
-    public WhatsAppChannel requireActive(Long companyId, Long id) {
-        WhatsAppChannel channel = require(companyId, id);
-        if (channel.getStatus() != ActiveStatus.ACTIVE) throw ApiException.conflict("Canal inativo");
+    public WhatsAppChannel requireActive(Long id) {
+        WhatsAppChannel channel = require(id);
+        if (channel.getStatus() != ActiveStatus.ACTIVE) {
+            throw ApiException.conflict("Canal inativo");
+        }
         return channel;
     }
 
     @Transactional(readOnly = true)
-    public List<ChannelDtos.Response> list(Long companyId) {
-        companies.require(companyId);
+    public WhatsAppChannel firstActive(com.wxn.chatbot.whatsapp.model.ProviderType provider) {
         return repository
-            .findByCompanyIdAndDeletedAtIsNullOrderById(companyId)
-            .stream()
-            .map(ChannelMapper::response)
-            .toList();
+            .findFirstByProviderAndDeletedAtIsNullOrderById(provider)
+            .filter(channel -> channel.getStatus() == ActiveStatus.ACTIVE)
+            .orElse(null);
+    }
+
+    public void updatePhone(WhatsAppChannel channel, String phoneNumber) {
+        channel.updatePhoneNumber(PhoneNumbers.optional(phoneNumber));
+        repository.save(channel);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ChannelDtos.Response> list() {
+        return repository.findByDeletedAtIsNullOrderById().stream().map(ChannelMapper::response).toList();
     }
 }

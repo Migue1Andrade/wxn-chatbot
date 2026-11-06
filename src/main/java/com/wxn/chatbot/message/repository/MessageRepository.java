@@ -6,19 +6,24 @@ import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 public interface MessageRepository extends MongoRepository<Message, ObjectId>, MessageOperations {
-    Optional<Message> findByIdAndCompanyId(ObjectId id, Long companyId);
-    Optional<Message> findByIdAndCompanyIdAndConversationId(
-        ObjectId id,
-        Long companyId,
-        ObjectId conversationId
+    @org.springframework.data.mongodb.repository.Query(
+        "{'direction':'OUTBOUND','status':{'$in':['PENDING','UNKNOWN','ACCEPTED']},'$or':[{'lastReconciledAt':null},{'lastReconciledAt':{'$lt':?0}}]}"
+    )
+    List<Message> reconciliationCandidates(
+        java.util.Date before,
+        org.springframework.data.domain.Pageable pageable
     );
-    Optional<Message> findByCompanyIdAndChannelIdAndExternalMessageId(
-        Long companyId,
+
+    Optional<Message> findByChannelIdAndOperationId(Long channelId, String operationId);
+    Optional<Message> findByChannelIdAndProviderTrackingId(Long channelId, String providerTrackingId);
+    List<Message> findByChannelIdAndDirectionAndStatusIn(
         Long channelId,
-        String externalMessageId
+        String direction,
+        java.util.Collection<com.wxn.chatbot.whatsapp.model.NormalizedMessageStatus> statuses
     );
-    List<Message> findByCompanyIdAndConversationIdOrderByCreatedAtAsc(
-        Long companyId,
+    Optional<Message> findByIdAndConversationId(ObjectId id, ObjectId conversationId);
+    Optional<Message> findByChannelIdAndExternalMessageId(Long channelId, String externalMessageId);
+    List<Message> findByConversationIdOrderByCreatedAtAsc(
         ObjectId conversationId,
         org.springframework.data.domain.Pageable pageable
     );

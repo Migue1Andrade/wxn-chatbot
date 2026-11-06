@@ -12,20 +12,14 @@ public class DevelopmentAccess {
 
     private final Environment environment;
     private final String key;
-    private final long companyId;
 
-    public DevelopmentAccess(
-        Environment environment,
-        @Value("${wxn.dev.api-key:}") String key,
-        @Value("${wxn.dev.company-id:1}") long companyId
-    ) {
+    public DevelopmentAccess(Environment environment, @Value("${wxn.dev.api-key:}") String key) {
         this.environment = environment;
         this.key = key;
-        this.companyId = companyId;
     }
 
     public boolean enabled() {
-        return environment.acceptsProfiles(Profiles.of("dev & !prod")) && key.length() >= 32 && companyId > 0;
+        return environment.acceptsProfiles(Profiles.of("dev & !prod")) && key.length() >= 32;
     }
 
     public boolean validKey(String supplied) {
@@ -37,13 +31,5 @@ public class DevelopmentAccess {
                 supplied.getBytes(StandardCharsets.UTF_8)
             )
         );
-    }
-
-    public boolean allows(long tenant) {
-        return enabled() && companyId == tenant;
-    }
-
-    public long companyId() {
-        return companyId;
     }
 }

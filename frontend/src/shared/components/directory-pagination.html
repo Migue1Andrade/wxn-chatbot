@@ -1,0 +1,25 @@
+<footer class="directory-panel-footer directory-pagination">
+  <span>
+    {{($ctrl.page * $ctrl.pageSize) + 1}}–{{($ctrl.page + 1) * $ctrl.pageSize < $ctrl.total ? ($ctrl.page + 1)
+    * $ctrl.pageSize : $ctrl.total}} de {{$ctrl.total}} registros
+  </span>
+  <nav aria-label="Paginação">
+    <button
+      type="button"
+      ng-disabled="$ctrl.page === 0"
+      ng-click="$ctrl.change(-1)"
+      aria-label="Página anterior"
+    >
+      ←
+    </button>
+    <span>Página {{$ctrl.page + 1}} de {{$ctrl.pages()}}</span>
+    <button
+      type="button"
+      ng-disabled="$ctrl.page + 1 >= $ctrl.pages()"
+      ng-click="$ctrl.change(1)"
+      aria-label="Próxima página"
+    >
+      →
+    </button>
+  </nav>
+</footer>

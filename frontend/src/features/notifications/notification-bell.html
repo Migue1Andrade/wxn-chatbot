@@ -1,0 +1,222 @@
+<div class="notification-anchor">
+  <button
+    type="button"
+    class="notification-trigger"
+    ng-class="{'is-active':bell.open}"
+    ng-click="bell.toggle()"
+    aria-label="Notificações: {{bell.state.count}} não lidas"
+    aria-expanded="{{!!bell.open}}"
+    aria-controls="notification-popover"
+    title="Notificações"
+  >
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
+    </svg>
+    <span
+      ng-if="bell.state.count"
+      class="notification-count"
+    >
+      {{bell.state.count > 99 ? '99+' : bell.state.count}}
+    </span>
+  </button>
+  <section
+    id="notification-popover"
+    class="notification-popover"
+    ng-if="bell.open"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Central de notificações"
+    focus-region="bell.open"
+    on-region-close="bell.close()"
+  >
+    <header class="notification-heading">
+      <div>
+        <span class="notification-eyebrow">SUA CAIXA DE ENTRADA</span>
+        <h2>
+          Notificações
+          <span>{{bell.state.count}}</span>
+        </h2>
+      </div>
+      <button
+        type="button"
+        class="notification-close"
+        ng-click="bell.close()"
+        aria-label="Fechar notificações"
+      >
+        ×
+      </button>
+    </header>
+    <div class="notification-toolbar">
+      <span>{{bell.state.count ? 'Você tem novidades para acompanhar' : 'Tudo em dia por aqui'}}</span>
+      <button
+        type="button"
+        ng-click="bell.center.readAll()"
+        ng-disabled="!bell.state.count"
+      >
+        Ler todas
+      </button>
+    </div>
+    <error-state
+      ng-if="bell.state.error"
+      message="{{bell.state.error}}"
+      on-retry="bell.center.load()"
+    ></error-state>
+    <div
+      class="notification-feed"
+      ng-if="!bell.selected"
+    >
+      <p
+        class="notification-feedback"
+        ng-if="bell.state.loading"
+      >
+        Buscando suas novidades…
+      </p>
+      <button
+        type="button"
+        class="notification-item"
+        ng-repeat="row in bell.state.items track by row.id"
+        ng-class="{'is-unread':!row.readAt}"
+        ng-click="bell.select(row)"
+      >
+        <span
+          class="notification-symbol"
+          aria-hidden="true"
+        >
+          <svg viewBox="0 0 24 24"><path d="M8 4h8v3H8zM6 5H4v16h16V5h-2M8 13l2 2 5-5" /></svg>
+        </span>
+        <span class="notification-copy">
+          <small>
+            {{row.resourceType === 'CONVERSATION' ? 'Atendimento atribuído' : row.type === 'TASK_OVERDUE' ?
+            'Prazo de atividade' : 'Atividade da equipe'}}
+          </small>
+          <strong>{{row.title}}</strong>
+          <time>{{row.createdAt | date:'dd MMM · HH:mm'}}</time>
+        </span>
+        <span
+          class="notification-unread-dot"
+          ng-if="!row.readAt"
+          aria-label="Não lida"
+        ></span>
+      </button>
+      <div
+        class="notification-empty"
+        ng-if="!bell.state.items.length && !bell.state.loading && !bell.state.error"
+      >
+        <strong>Um respiro na operação.</strong>
+        <p>Novas atividades e lembretes aparecem aqui.</p>
+      </div>
+      <button
+        type="button"
+        class="notification-more"
+        ng-if="bell.state.more"
+        ng-disabled="bell.state.loading"
+        ng-click="bell.center.load(true)"
+      >
+        Carregar anteriores
+      </button>
+    </div>
+    <div
+      class="notification-detail"
+      ng-if="bell.selected"
+    >
+      <button
+        type="button"
+        class="notification-back"
+        ng-click="bell.back()"
+      >
+        ← Voltar às notificações
+      </button>
+      <span class="notification-eyebrow">
+        {{bell.selected.type === 'TASK_OVERDUE' ? 'ATIVIDADE VENCIDA' : 'ATIVIDADE'}}
+      </span>
+      <h3>{{bell.selected.title}}</h3>
+      <p
+        class="notification-feedback"
+        ng-if="bell.loading"
+      >
+        Carregando contexto…
+      </p>
+      <p
+        class="notification-error"
+        ng-if="bell.error"
+        role="alert"
+      >
+        {{bell.error}}
+      </p>
+      <div ng-if="bell.task">
+        <p class="notification-description">{{bell.task.description || 'Sem descrição adicional.'}}</p>
+        <dl>
+          <div>
+            <dt>Prazo</dt>
+            <dd>{{bell.task.dueAt | date:'dd/MM/yyyy · HH:mm'}}</dd>
+          </div>
+          <div>
+            <dt>Situação</dt>
+            <dd>
+              {{bell.task.status === 'OPEN' ? 'Pendente' : bell.task.status === 'COMPLETED' ? 'Concluída' :
+              'Cancelada'}}
+            </dd>
+          </div>
+        </dl>
+        <p
+          class="notification-hint"
+          ng-if="bell.task.conversationId"
+        >
+          Continue o atendimento na conversa vinculada. As mensagens são enviadas pelo chat.
+        </p>
+        <div class="notification-detail-actions">
+          <button
+            type="button"
+            class="notification-primary"
+            ng-if="bell.task.conversationId"
+            ng-click="bell.go('/', {conversation:bell.task.conversationId})"
+          >
+            Abrir conversa para responder ↗
+          </button>
+          <button
+            type="button"
+            ng-if="bell.task.status === 'OPEN'"
+            ng-disabled="bell.busy"
+            ng-click="bell.complete()"
+          >
+            {{bell.busy ? 'Concluindo…' : '✓ Concluir atividade'}}
+          </button>
+        </div>
+      </div>
+      <div ng-if="bell.selected.resourceType === 'CONVERSATION'">
+        <p class="notification-hint">
+          Acesse o atendimento para consultar o contexto e responder. O acesso depende da atribuição atual.
+        </p>
+        <div class="notification-detail-actions">
+          <button
+            type="button"
+            class="notification-primary"
+            ng-click="bell.go('/', {conversation:bell.selected.resourceId})"
+          >
+            Abrir atendimento e responder ↗
+          </button>
+        </div>
+      </div>
+      <button
+        type="button"
+        class="notification-read"
+        ng-if="!bell.selected.readAt"
+        ng-click="bell.center.read(bell.selected)"
+      >
+        Marcar como lida
+      </button>
+    </div>
+    <footer>
+      <button
+        type="button"
+        ng-click="bell.go('/notifications')"
+      >
+        Ver histórico completo
+        <span>↗</span>
+      </button>
+    </footer>
+  </section>
+</div>

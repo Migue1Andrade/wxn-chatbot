@@ -6,9 +6,13 @@ import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 public interface MessageLogRepository extends MongoRepository<MessageLog, ObjectId> {
-    boolean existsByEventKeyAndCompanyId(String eventKey, Long companyId);
-    List<MessageLog> findByCompanyIdAndChannelIdAndExternalMessageIdAndEventOrderByCreatedAtAsc(
-        Long companyId,
+    @org.springframework.data.mongodb.repository.Query(
+        "{'channelId':?0, 'event':'provider.delivery', 'echo.tracking':?1}"
+    )
+    List<MessageLog> tracked(Long channelId, String tracking);
+
+    boolean existsByEventKey(String eventKey);
+    List<MessageLog> findByChannelIdAndExternalMessageIdAndEventOrderByCreatedAtAsc(
         Long channelId,
         String externalMessageId,
         String event

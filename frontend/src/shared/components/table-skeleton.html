@@ -1,0 +1,17 @@
+<div
+  class="directory-panel table-skeleton"
+  role="status"
+  aria-label="Carregando registros"
+  aria-busy="true"
+>
+  <span class="sr-only">Carregando registros…</span>
+  <div
+    ng-repeat="row in [0,1,2,3,4] track by row"
+    class="skeleton-row"
+    aria-hidden="true"
+  >
+    <i></i>
+    <i></i>
+    <i></i>
+  </div>
+</div>

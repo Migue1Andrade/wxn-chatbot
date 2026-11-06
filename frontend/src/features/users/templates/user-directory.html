@@ -1,0 +1,237 @@
+<div class="directory-directory">
+  <div class="directory-toolbar">
+    <label class="directory-search">
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <circle
+          cx="10.5"
+          cy="10.5"
+          r="6.5"
+        />
+        <path d="m16 16 4 4" />
+      </svg>
+      <input
+        type="search"
+        ng-model="$ctrl.query"
+        ng-change="$ctrl.filter()"
+        placeholder="Buscar nome, usuário, e-mail, CPF ou setor"
+        aria-label="Buscar usuários"
+        ng-disabled="$ctrl.loading"
+      />
+    </label>
+    <div class="directory-filters">
+      <label>
+        <span class="sr-only">Ordenação dos usuários</span>
+        <select
+          ng-model="$ctrl.sort"
+          ng-change="$ctrl.filter()"
+        >
+          <option value="name">Nome: A–Z</option>
+          <option value="recent">Mais recentes</option>
+        </select>
+      </label>
+      <label>
+        <span class="sr-only">Filtrar por perfil</span>
+        <select
+          ng-model="$ctrl.role"
+          ng-change="$ctrl.filter()"
+          ng-disabled="$ctrl.loading"
+        >
+          <option value="">Todos os perfis</option>
+          <option value="ADMIN">Administrador</option>
+          <option value="ATTENDANT">Atendente</option>
+        </select>
+      </label>
+      <label>
+        <span class="sr-only">Filtrar por status</span>
+        <select
+          ng-model="$ctrl.status"
+          ng-change="$ctrl.filter()"
+          ng-disabled="$ctrl.loading"
+        >
+          <option value="">Todos os status</option>
+          <option value="ACTIVE">Ativos</option>
+          <option value="INACTIVE">Inativos</option>
+        </select>
+      </label>
+    </div>
+  </div>
+  <table-skeleton ng-if="$ctrl.loading"></table-skeleton>
+  <div
+    class="directory-panel"
+    ng-if="!$ctrl.loading"
+  >
+    <div class="directory-panel-heading">
+      <span>
+        Equipe e acessos
+        <span class="directory-count">{{$ctrl.users.length}}</span>
+      </span>
+      <span class="directory-active-count">
+        <i></i>
+        {{$ctrl.activeCount}} {{$ctrl.activeCount === 1 ? 'ativo' : 'ativos'}}
+      </span>
+    </div>
+    <table
+      class="directory-table"
+      aria-label="Usuários e permissões de acesso"
+      ng-if="$ctrl.filteredUsers.length"
+    >
+      <colgroup>
+        <col class="directory-col-person" />
+        <col class="directory-col-contact" />
+        <col class="directory-col-role" />
+        <col class="directory-col-departments" />
+        <col class="directory-col-status" />
+        <col class="directory-col-actions" />
+      </colgroup>
+      <thead>
+        <tr>
+          <th scope="col">Usuário</th>
+          <th scope="col">Contato</th>
+          <th scope="col">Perfil</th>
+          <th scope="col">Setores</th>
+          <th scope="col">Status</th>
+          <th
+            scope="col"
+            class="directory-actions-heading"
+          >
+            Ações
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr ng-repeat="user in $ctrl.visibleUsers track by user.id">
+          <td class="directory-person-cell">
+            <div class="directory-person">
+              <span
+                class="directory-avatar"
+                ng-class="{'is-admin': user.role === 'ADMIN', 'is-inactive': user.accountStatus !== 'ACTIVE'}"
+                aria-hidden="true"
+              >
+                {{$ctrl.initials(user.name)}}
+              </span>
+              <div class="directory-person-info">
+                <strong>{{user.name}}</strong>
+                <span
+                  ng-if="user.username"
+                  class="directory-handle"
+                >
+                  @{{user.username}}
+                </span>
+                <span
+                  ng-if="user.registrationIncomplete"
+                  class="directory-incomplete"
+                >
+                  Cadastro pendente
+                </span>
+              </div>
+            </div>
+          </td>
+          <td
+            class="directory-contact-cell"
+            data-label="Contato"
+          >
+            <span
+              class="directory-contact"
+              ng-class="{'is-missing': !user.email && !user.phone}"
+              title="{{user.email || user.phone}}"
+            >
+              {{user.email || user.phone || 'Não informado'}}
+            </span>
+            <span
+              ng-if="user.email && user.phone"
+              class="directory-secondary"
+            >
+              {{user.phone}}
+            </span>
+            <span
+              ng-if="user.cpf"
+              class="directory-secondary directory-cpf"
+            >
+              CPF {{user.cpf | cpf}}
+            </span>
+          </td>
+          <td
+            class="directory-role-cell"
+            data-label="Perfil"
+          >
+            <span
+              class="directory-role"
+              ng-class="{'is-admin': user.role === 'ADMIN'}"
+            >
+              {{user.role === 'ADMIN' ? 'Administrador' : 'Atendente'}}
+            </span>
+          </td>
+          <td
+            class="directory-departments-cell"
+            data-label="Setores"
+          >
+            <div
+              class="directory-department-tags"
+              ng-if="user.departments.length"
+            >
+              <department-tag
+                ng-repeat="department in user.departments track by department.id"
+                department="department"
+                title="{{department.name}}"
+              ></department-tag>
+            </div>
+            <span
+              ng-if="!user.departments.length"
+              class="directory-missing"
+            >
+              Sem setor
+            </span>
+          </td>
+          <td
+            class="directory-status-cell"
+            data-label="Status"
+          >
+            <span
+              class="directory-status"
+              ng-class="{'is-active': user.accountStatus === 'ACTIVE'}"
+            >
+              <i></i>
+              {{user.accountStatus === 'ACTIVE' ? 'Ativo' : 'Inativo'}}
+            </span>
+          </td>
+          <td class="directory-actions-cell">
+            <action-menu label="Ações de {{user.name}}">
+              <button
+                type="button"
+                ng-click="$ctrl.onEdit({user:user})"
+              >
+                {{user.registrationIncomplete ? 'Completar cadastro' : 'Editar usuário'}}
+              </button>
+            </action-menu>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div
+      ng-if="!$ctrl.filteredUsers.length"
+      class="directory-empty"
+    >
+      <empty-state
+        title="{{$ctrl.users.length ? 'Nenhum usuário encontrado' : 'Sua equipe começa aqui'}}"
+        description="{{$ctrl.users.length ? 'Tente outro termo ou ajuste os filtros da busca.' : 'Cadastre o primeiro usuário para organizar os acessos da equipe.'}}"
+      ></empty-state>
+      <button
+        type="button"
+        ng-if="$ctrl.query || $ctrl.role || $ctrl.status"
+        ng-click="$ctrl.clear()"
+      >
+        Limpar filtros
+      </button>
+    </div>
+    <directory-pagination
+      ng-if="$ctrl.filteredUsers.length"
+      page="$ctrl.page"
+      total="$ctrl.filteredUsers.length"
+      page-size="$ctrl.pageSize"
+      on-change="$ctrl.paginate(page)"
+    ></directory-pagination>
+  </div>
+</div>

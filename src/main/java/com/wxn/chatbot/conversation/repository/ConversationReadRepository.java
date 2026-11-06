@@ -8,9 +8,5 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 public interface ConversationReadRepository
     extends MongoRepository<ConversationRead, ObjectId>, ConversationReadOperations
 {
-    List<ConversationRead> findByCompanyIdAndMemberIdAndConversationIdIn(
-        Long companyId,
-        Long memberId,
-        List<ObjectId> ids
-    );
+    List<ConversationRead> findByMemberIdAndConversationIdIn(Long memberId, List<ObjectId> ids);
 }

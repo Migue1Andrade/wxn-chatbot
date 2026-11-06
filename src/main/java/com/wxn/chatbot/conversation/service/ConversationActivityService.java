@@ -13,13 +13,19 @@ import org.springframework.stereotype.Service;
 @Service
 public class ConversationActivityService {
 
+    private final com.wxn.chatbot.member.repository.MemberRepository members;
+    private final com.wxn.chatbot.notification.service.NotificationService notifications;
     private final ConversationActivityRepository repository;
     private final ConversationRepository conversations;
 
     public ConversationActivityService(
         ConversationActivityRepository repository,
-        ConversationRepository conversations
+        ConversationRepository conversations,
+        com.wxn.chatbot.member.repository.MemberRepository members,
+        com.wxn.chatbot.notification.service.NotificationService notifications
     ) {
+        this.members = members;
+        this.notifications = notifications;
         this.repository = repository;
         this.conversations = conversations;
     }
@@ -33,16 +39,8 @@ public class ConversationActivityService {
         long version,
         OffsetDateTime occurredAt
     ) {
-        String key =
-            conversation.getCompanyId() +
-            ":" +
-            conversation.getId().toHexString() +
-            ":" +
-            version +
-            ":" +
-            event;
+        String key = conversation.getId().toHexString() + ":" + version + ":" + event;
         return new ConversationActivity(
-            conversation.getCompanyId(),
             conversation.getId(),
             key,
             event,
@@ -59,24 +57,62 @@ public class ConversationActivityService {
             try {
                 repository.insert(activity);
             } catch (DuplicateKeyException duplicate) {
-                repository
-                    .findByEventKeyAndCompanyId(activity.getEventKey(), activity.getCompanyId())
-                    .orElseThrow(() -> duplicate);
+                repository.findByEventKey(activity.getEventKey()).orElseThrow(() -> duplicate);
             }
-            conversations.acknowledgeActivity(
-                conversation.getId(),
-                conversation.getCompanyId(),
-                activity.getId()
-            );
+            if (
+                activity.getNewMemberId() != null &&
+                java.util.Set.of(
+                    ConversationActivityType.MEMBER_ASSIGNED,
+                    ConversationActivityType.MEMBER_ASSUMED,
+                    ConversationActivityType.MEMBER_TRANSFERRED
+                ).contains(activity.getEvent())
+            ) {
+                members
+                    .findById(activity.getNewMemberId())
+                    .filter(member -> member.getUserId() != null)
+                    .ifPresent(member ->
+                        notifications.createOnce(
+                            member.getUserId(),
+                            activity.getEvent() == ConversationActivityType.MEMBER_TRANSFERRED
+                                ? "CONVERSATION_TRANSFERRED"
+                                : "CONVERSATION_ASSIGNED",
+                            "Um atendimento foi atribuído a você",
+                            "CONVERSATION",
+                            conversation.getId().toHexString(),
+                            activity.getEventKey() + ":" + member.getUserId()
+                        )
+                    );
+            }
+            conversations.acknowledgeActivity(conversation.getId(), activity.getId());
         }
         conversation.setPendingActivities(List.of());
+    }
+
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 15000)
+    public void replayPendingNotifications() {
+        for (var conversation : conversations.pendingNotifications(
+            org.springframework.data.domain.PageRequest.of(0, 25)
+        )) {
+            flush(conversation);
+        }
+    }
+
+    public List<ConversationManagementDtos.Activity> recent(Conversation conversation, int page, int size) {
+        flush(conversation);
+        return repository
+            .findByConversationIdOrderByCreatedAtDescIdDesc(
+                conversation.getId(),
+                ConversationService.page(page, size)
+            )
+            .stream()
+            .map(ConversationActivityMapper::response)
+            .toList();
     }
 
     public List<ConversationManagementDtos.Activity> list(Conversation conversation, int page, int size) {
         flush(conversation);
         return repository
-            .findByCompanyIdAndConversationIdOrderByCreatedAtAscIdAsc(
-                conversation.getCompanyId(),
+            .findByConversationIdOrderByCreatedAtAscIdAsc(
                 conversation.getId(),
                 ConversationService.page(page, size)
             )

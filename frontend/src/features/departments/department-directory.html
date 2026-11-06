@@ -1,0 +1,185 @@
+<div class="directory">
+  <div class="directory-toolbar">
+    <label class="directory-search">
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <circle
+          cx="10.5"
+          cy="10.5"
+          r="6.5"
+        />
+        <path d="m16 16 4 4" />
+      </svg>
+      <input
+        type="search"
+        ng-model="$ctrl.query"
+        ng-change="$ctrl.filter()"
+        placeholder="Buscar setor ou descrição"
+        aria-label="Buscar setores"
+        ng-disabled="$ctrl.loading"
+      />
+    </label>
+    <div class="directory-filters">
+      <label>
+        <span class="sr-only">Status dos setores</span>
+        <select
+          ng-model="$ctrl.status"
+          ng-change="$ctrl.filter()"
+        >
+          <option value="">Todos os status</option>
+          <option value="ACTIVE">Ativos</option>
+          <option value="INACTIVE">Inativos</option>
+        </select>
+      </label>
+      <label>
+        <span class="sr-only">Ordenação</span>
+        <select
+          ng-model="$ctrl.sort"
+          ng-change="$ctrl.filter()"
+        >
+          <option value="name">Nome: A–Z</option>
+          <option value="members">Mais integrantes</option>
+        </select>
+      </label>
+    </div>
+  </div>
+  <table-skeleton ng-if="$ctrl.loading"></table-skeleton>
+  <div
+    class="directory-panel"
+    ng-if="!$ctrl.loading"
+  >
+    <div class="directory-panel-heading">
+      <span>
+        Setores de atendimento
+        <span class="directory-count">{{$ctrl.departments.length}}</span>
+      </span>
+      <span class="directory-active-count">
+        <i></i>
+        {{$ctrl.activeCount}} ativos
+      </span>
+    </div>
+    <table
+      class="directory-table department-table"
+      aria-label="Setores de atendimento"
+      ng-if="$ctrl.filtered.length"
+    >
+      <thead>
+        <tr>
+          <th scope="col">Setor</th>
+          <th scope="col">Descrição</th>
+          <th scope="col">Integrantes</th>
+          <th scope="col">Status</th>
+          <th scope="col">Criado em</th>
+          <th
+            scope="col"
+            class="directory-actions-heading"
+          >
+            Ações
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr ng-repeat="department in $ctrl.visible track by department.id">
+          <td class="directory-person-cell">
+            <div class="directory-person">
+              <span
+                class="department-swatch"
+                ng-style="{'background-color':department.color}"
+                aria-hidden="true"
+              ></span>
+              <div class="directory-person-info">
+                <strong>{{department.name}}</strong>
+                <span class="directory-secondary">{{department.color}}</span>
+              </div>
+            </div>
+          </td>
+          <td
+            class="directory-contact-cell"
+            data-label="Descrição"
+          >
+            <span
+              class="directory-contact"
+              ng-class="{'is-missing':!department.description}"
+            >
+              {{department.description || 'Sem descrição'}}
+            </span>
+          </td>
+          <td data-label="Integrantes">
+            <button
+              type="button"
+              class="text-teal-700"
+              ng-click="$ctrl.onMembers({department:department})"
+            >
+              {{department.memberCount}} {{department.memberCount === 1 ? 'integrante' : 'integrantes'}}
+            </button>
+          </td>
+          <td
+            class="directory-status-cell"
+            data-label="Status"
+          >
+            <span
+              class="directory-status"
+              ng-class="{'is-active':department.status === 'ACTIVE'}"
+            >
+              <i></i>
+              {{department.status === 'ACTIVE' ? 'Ativo' : 'Inativo'}}
+            </span>
+          </td>
+          <td data-label="Criado em">
+            <span class="directory-secondary">
+              {{department.createdAt ? (department.createdAt | date:'dd/MM/yyyy') : 'Não registrado'}}
+            </span>
+          </td>
+          <td class="directory-actions-cell">
+            <action-menu label="Ações de {{department.name}}">
+              <button
+                type="button"
+                ng-click="$ctrl.onEdit({department:department})"
+              >
+                Editar setor
+              </button>
+              <button
+                type="button"
+                ng-click="$ctrl.onMembers({department:department})"
+              >
+                Visualizar integrantes
+              </button>
+              <button
+                type="button"
+                class="is-danger"
+                ng-click="$ctrl.onRemove({department:department})"
+              >
+                Excluir setor
+              </button>
+            </action-menu>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div
+      class="directory-empty"
+      ng-if="!$ctrl.filtered.length"
+    >
+      <empty-state
+        title="{{$ctrl.departments.length ? 'Nenhum setor encontrado' : 'Organize sua equipe'}}"
+        description="{{$ctrl.departments.length ? 'Ajuste a busca ou os filtros para tentar novamente.' : 'Crie o primeiro setor para distribuir os atendentes.'}}"
+      ></empty-state>
+      <button
+        type="button"
+        ng-if="$ctrl.query || $ctrl.status"
+        ng-click="$ctrl.clear()"
+      >
+        Limpar filtros
+      </button>
+    </div>
+    <directory-pagination
+      ng-if="$ctrl.filtered.length"
+      page="$ctrl.page"
+      total="$ctrl.filtered.length"
+      page-size="$ctrl.pageSize"
+      on-change="$ctrl.paginate(page)"
+    ></directory-pagination>
+  </div>
+</div>

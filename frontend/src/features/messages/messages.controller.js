@@ -13,6 +13,7 @@ angular.module('wxn.messages').controller('MessagesController', [
   'MessageEvents',
   'AppEvents',
   'MemberEvents',
+  'MessageActionsService',
   function (
     $scope,
     $timeout,
@@ -26,8 +27,10 @@ angular.module('wxn.messages').controller('MessagesController', [
     messageEvents,
     appEvents,
     memberEvents,
+    actions,
   ) {
     const vm = this;
+    vm.actions = actions;
     vm.history = histories.create();
     vm.sender = senders.create();
     vm.reader = readers.create();
@@ -39,7 +42,10 @@ angular.module('wxn.messages').controller('MessagesController', [
     vm.operation = () => vm.sender.operation(chats.state.selected?.id);
     vm.error = () => vm.operation().error || vm.history.error || vm.reader.state.error;
     vm.reload = () => {
-      if (!chats.state.selected) return;
+      if (!chats.state.selected) {
+        return;
+      }
+      actions.capabilities();
       vm.reader.select(chats.state.selected.id);
       vm.history.select(chats.state.selected);
     };
@@ -48,23 +54,44 @@ angular.module('wxn.messages').controller('MessagesController', [
       vm.history.upsert(event.payload);
     }
     function management(event) {
-      if (event.conversationId !== vm.history.conversationId) return;
+      if (event.conversationId !== vm.history.conversationId) {
+        return;
+      }
+      actions.capabilities();
       $timeout.cancel(eventTimer);
       eventTimer = $timeout(() => vm.history.loadEvents(), 120);
     }
     function send(command) {
       const conversation = chats.state.selected;
-      if (!conversation || command.conversationId !== conversation.id) return;
-      const pending = vm.sender.send(conversation, vm.member.member, command.content);
+      if (!conversation || command.conversationId !== conversation.id) {
+        return;
+      }
+      const pending = vm.sender.send(
+        conversation,
+        actions.actor(),
+        command.content,
+        command.reply,
+        command.operationId,
+      );
       pending?.then((message) => {
-        if (!message) return;
+        if (!message) {
+          return;
+        }
         vm.history.upsert(message);
-        if (message.status !== 'FAILED') command.onSuccess?.();
+        if (!['FAILED', 'UNKNOWN'].includes(message.status)) {
+          command.onSuccess?.();
+        }
       });
     }
     const cleanup = [
       bus.on(chatEvents.SELECTED, vm.reload),
+      bus.on('wxn:channel:changed', (event) => {
+        if (event.payload?.channelId === chats.state.selected?.channelId) {
+          actions.capabilities();
+        }
+      }),
       bus.on(appEvents.SOCKET_CONNECTED, () => {
+        actions.capabilities();
         vm.history.reconcile();
         vm.history.loadEvents();
       }),

@@ -23,6 +23,9 @@ public final class MessageMapper {
     ) {
         Message message = base(channel, conversation, Direction.INBOUND);
         message.setInboundCompleted(false);
+        message.setOrigin("CONTACT");
+        message.setExternalContactIdentity(incoming.externalContactIdentity());
+        message.setReplyToExternalMessageId(incoming.replyToExternalMessageId());
         message.setExternalMessageId(incoming.externalMessageId());
         message.setSenderPhone(incoming.senderPhone());
         message.setRecipientPhone(incoming.recipientPhone());
@@ -45,6 +48,9 @@ public final class MessageMapper {
         message.setSenderPhone(channel.getPhoneNumber());
         message.setRecipientPhone(recipient);
         message.setMemberId(request.memberId());
+        message.setActorUserId(request.actorUserId());
+        message.setOrigin("WXN");
+        message.setOperationId(request.operationId());
         message.setType(MessageType.TEXT.name());
         message.setContent(new Document("text", request.content()));
         message.setStatus(NormalizedMessageStatus.PENDING);
@@ -54,7 +60,7 @@ public final class MessageMapper {
 
     private static Message base(WhatsAppChannel channel, Conversation conversation, Direction direction) {
         Message message = new Message();
-        message.setCompanyId(channel.getCompanyId());
+
         message.setChannelId(channel.getId());
         message.setConversationId(conversation.getId());
         message.setProvider(channel.getProvider());
@@ -65,9 +71,51 @@ public final class MessageMapper {
     }
 
     public static NormalizedMessage response(Message m) {
+        return response(m, java.util.Set.of());
+    }
+
+    public static NormalizedMessage response(Message m, java.util.Set<MessageCapability> capabilities) {
+        java.util.Set<MessageCapability> applicable = new java.util.HashSet<>(capabilities);
+        applicable.remove(MessageCapability.SEND_TEXT);
+        applicable.remove(MessageCapability.MESSAGE_STATUS);
+        applicable.removeAll(
+            java.util.Set.of(
+                MessageCapability.CONFIGURE_WEBHOOKS,
+                MessageCapability.CONNECTION_STATUS,
+                MessageCapability.QR_CODE,
+                MessageCapability.RESTART_INSTANCE,
+                MessageCapability.DISCONNECT_INSTANCE
+            )
+        );
+        if (
+            !"TEXT".equals(m.getType()) ||
+            m.getDeletedAt() != null ||
+            (m.getDeleteState() != null && !"FAILED".equals(m.getDeleteState())) ||
+            m.getExternalMessageId() == null ||
+            m.getStatus() == NormalizedMessageStatus.PENDING ||
+            m.getStatus() == NormalizedMessageStatus.FAILED ||
+            m.getStatus() == NormalizedMessageStatus.UNKNOWN
+        ) {
+            applicable.clear();
+        }
+        if (!"OUTBOUND".equals(m.getDirection())) {
+            applicable.remove(MessageCapability.DELETE_FOR_EVERYONE);
+            applicable.remove(MessageCapability.EDIT_TEXT);
+        }
+
+        if ("OUTBOUND".equals(m.getDirection())) {
+            applicable.remove(MessageCapability.MARK_READ);
+        }
+        if (
+            m.getPendingMutation() != null &&
+            java.util.Set.of("PENDING", "ACCEPTED", "UNKNOWN").contains(
+                m.getPendingMutation().getString("state")
+            )
+        ) {
+            applicable.clear();
+        }
         return new NormalizedMessage(
             m.getId().toHexString(),
-            m.getCompanyId(),
             m.getChannelId(),
             m.getConversationId() == null ? null : m.getConversationId().toHexString(),
             m.getProvider(),
@@ -76,18 +124,37 @@ public final class MessageMapper {
             m.getSenderPhone(),
             m.getRecipientPhone(),
             type(m.getType()),
-            m.getContent() == null ? null : new LinkedHashMap<>(m.getContent()),
+            m.getContent() == null || m.getDeletedAt() != null ? null : new LinkedHashMap<>(m.getContent()),
             m.getStatus(),
             m.getMemberId(),
             m.getSimulated(),
             m.getErrorCode(),
             m.getCreatedAt() == null ? null : m.getCreatedAt().toInstant(),
-            m.getUpdatedAt() == null ? null : m.getUpdatedAt().toInstant()
+            m.getUpdatedAt() == null ? null : m.getUpdatedAt().toInstant(),
+            m.getOperationId(),
+            m.getReplyToMessageId(),
+            m.getReplyToExternalMessageId(),
+            m.getReplyPreview(),
+            m.getForwardedFromMessageId(),
+            m.getOrigin(),
+            m.getDeletedAt() == null ? null : m.getDeletedAt().toInstant(),
+            m.getDeletionIntent(),
+            m.getDeleteState(),
+            m.getPendingMutation() == null || m.getDeletedAt() != null
+                ? null
+                : new LinkedHashMap<>(m.getPendingMutation()),
+            m.getReaction(),
+            m.getContactReaction(),
+            m.getEditedAt() == null ? null : m.getEditedAt().toInstant(),
+            m.getVersion(),
+            java.util.Set.copyOf(applicable)
         );
     }
 
     private static Direction direction(String value) {
-        if (value == null) return null;
+        if (value == null) {
+            return null;
+        }
         try {
             return Direction.valueOf(value.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException unknown) {
@@ -96,7 +163,9 @@ public final class MessageMapper {
     }
 
     private static MessageType type(String value) {
-        if (value == null) return null;
+        if (value == null) {
+            return null;
+        }
         try {
             return MessageType.valueOf(value.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException unknown) {

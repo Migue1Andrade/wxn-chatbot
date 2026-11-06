@@ -8,14 +8,10 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 public interface ConversationRepository
     extends MongoRepository<Conversation, ObjectId>, ConversationOperations
 {
-    Optional<Conversation> findByIdAndCompanyId(ObjectId id, Long companyId);
-    Optional<Conversation> findByCompanyIdAndChannelIdAndConversationKey(
-        Long companyId,
-        Long channelId,
-        String key
-    );
-    List<Conversation> findByCompanyIdOrderByUpdatedAtDesc(
-        Long companyId,
-        org.springframework.data.domain.Pageable pageable
-    );
+    @org.springframework.data.mongodb.repository.Query("{'pendingActivities.0':{'$exists':true}}")
+    java.util.List<Conversation> pendingNotifications(org.springframework.data.domain.Pageable pageable);
+
+    boolean existsByDepartmentId(Long departmentId);
+    boolean existsByDepartmentIdAndStatusNotIn(Long departmentId, java.util.Collection<String> statuses);
+    Optional<Conversation> findByChannelIdAndConversationKey(Long channelId, String key);
 }

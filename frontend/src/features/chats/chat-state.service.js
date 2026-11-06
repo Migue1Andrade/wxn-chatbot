@@ -38,13 +38,20 @@ angular.module('wxn.chats').factory('ChatStateService', function () {
   }
   function applyEvent(conversation) {
     revisions.set(conversation.id, ++changes);
-    if (state.selected?.id === conversation.id) state.selected = combine(state.selected, conversation);
+    if (state.selected?.id === conversation.id) {
+      state.selected = combine(state.selected, conversation);
+    }
     const position = state.conversations.findIndex((row) => row.id === conversation.id);
     const merged = combine(position >= 0 ? state.conversations[position] : null, conversation);
     if (!matchesConversation(merged, state)) {
-      if (position >= 0) state.conversations.splice(position, 1);
-    } else if (position >= 0) state.conversations[position] = merged;
-    else state.conversations.push(merged);
+      if (position >= 0) {
+        state.conversations.splice(position, 1);
+      }
+    } else if (position >= 0) {
+      state.conversations[position] = merged;
+    } else {
+      state.conversations.push(merged);
+    }
     sort();
   }
   function replace(rows, requestedAt) {
@@ -52,35 +59,49 @@ angular.module('wxn.chats').factory('ChatStateService', function () {
     const result = new Map();
     for (const row of rows) {
       const merged = combine(current.get(row.id), row);
-      if ((readRevisions.get(row.id) || 0) <= requestedAt && row.unreadCount != null)
+      if ((readRevisions.get(row.id) || 0) <= requestedAt && row.unreadCount != null) {
         state.unread[row.id] = row.unreadCount;
-      if (state.unread[row.id] != null) merged.unreadCount = state.unread[row.id];
-      if (matchesConversation(merged, state)) result.set(row.id, merged);
-      if (state.selected?.id === row.id) state.selected = combine(state.selected, merged);
+      }
+      if (state.unread[row.id] != null) {
+        merged.unreadCount = state.unread[row.id];
+      }
+      if (matchesConversation(merged, state)) {
+        result.set(row.id, merged);
+      }
+      if (state.selected?.id === row.id) {
+        state.selected = combine(state.selected, merged);
+      }
     }
     for (const row of current.values()) {
-      if ((revisions.get(row.id) || 0) > requestedAt && matchesConversation(row, state))
+      if ((revisions.get(row.id) || 0) > requestedAt && matchesConversation(row, state)) {
         result.set(row.id, row);
+      }
     }
     state.conversations = [...result.values()];
     sort();
   }
   function read(update) {
-    if (update.memberId !== state.readerId) return;
+    if (update.memberId !== state.readerId) {
+      return;
+    }
     const frontier = { time: Date.parse(update.lastReadAt) || 0, id: update.throughMessageId || '' };
     const previous = readBoundaries.get(update.conversationId);
     if (
       previous &&
       (previous.time > frontier.time || (previous.time === frontier.time && previous.id > frontier.id))
-    )
+    ) {
       return;
+    }
     readBoundaries.set(update.conversationId, frontier);
     readRevisions.set(update.conversationId, ++changes);
     state.unread[update.conversationId] = update.unreadCount;
     const conversation = state.conversations.find((row) => row.id === update.conversationId);
-    if (conversation) conversation.unreadCount = update.unreadCount;
-    if (state.selected?.id === update.conversationId)
+    if (conversation) {
+      conversation.unreadCount = update.unreadCount;
+    }
+    if (state.selected?.id === update.conversationId) {
       state.selected.unreadCount = update.unreadCount;
+    }
   }
   function resetQuery() {
     state.conversations = [];

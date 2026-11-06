@@ -1,0 +1,504 @@
+<div class="flex min-h-screen bg-slate-50 text-slate-800">
+  <management-navigation></management-navigation>
+  <main class="product-page kb-workspace kb-refined">
+    <header class="kb-heading">
+      <div>
+        <p class="kb-eyebrow">CENTRAL DE OPERAÇÕES</p>
+        <h1>Central de atendimentos</h1>
+        <p>Acompanhe sua operação em tempo real.</p>
+      </div>
+      <div class="kb-actions">
+        <button
+          ng-click="vm.load()"
+          ng-disabled="vm.loading"
+        >
+          Atualizar
+        </button>
+        <button
+          class="kb-primary"
+          ng-click="vm.savingView = true"
+        >
+          Salvar visualização
+        </button>
+      </div>
+    </header>
+    <div
+      class="kb-error"
+      ng-if="vm.error"
+      role="alert"
+    >
+      {{vm.error}}
+    </div>
+    <section
+      class="kb-metrics"
+      aria-label="Indicadores globais"
+    >
+      <div>
+        <span>Atendimentos abertos</span>
+        <strong>{{vm.metrics.open == null ? '—' : vm.metrics.open}}</strong>
+        <small>Todos os canais</small>
+      </div>
+      <button ng-click="vm.filters.unassigned = true; vm.load()">
+        <span>Sem responsável</span>
+        <strong>{{vm.metrics.unassigned == null ? '—' : vm.metrics.unassigned}}</strong>
+        <small>Precisa de atribuição</small>
+      </button>
+      <div>
+        <span>Esperando a equipe</span>
+        <strong>{{vm.metrics.waitingForAgent == null ? '—' : vm.metrics.waitingForAgent}}</strong>
+        <small>Mensagem externa pendente</small>
+      </div>
+      <div>
+        <span>Resolvidos hoje</span>
+        <strong>{{vm.metrics.resolvedToday == null ? '—' : vm.metrics.resolvedToday}}</strong>
+        <small>Dia em {{vm.metrics.timezone}}</small>
+      </div>
+      <div>
+        <span>Resolução média</span>
+        <strong>
+          {{vm.metrics.averageResolutionMinutes == null ? '—' : (vm.metrics.averageResolutionMinutes |
+          number:0) + ' min'}}
+        </strong>
+        <small>Ciclos registrados · todo o histórico</small>
+      </div>
+    </section>
+    <div class="kb-quick-views">
+      <button
+        ng-click="vm.filters.sla = 'AT_RISK'; vm.load()"
+        class="kb-risk-filter"
+        ng-class="{'is-active':vm.filters.sla === 'AT_RISK'}"
+      >
+        SLA em risco · {{vm.metrics.slaAtRisk || 0}}
+      </button>
+      <button
+        ng-click="vm.filters.sla = 'BREACHED'; vm.load()"
+        class="kb-breach-filter"
+        ng-class="{'is-active':vm.filters.sla === 'BREACHED'}"
+      >
+        SLA violado · {{vm.metrics.slaBreached || 0}}
+      </button>
+    </div>
+    <section
+      class="kb-controls"
+      aria-label="Filtros do quadro"
+    >
+      <div class="kb-control-row">
+        <label class="kb-search">
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <circle
+              cx="10.5"
+              cy="10.5"
+              r="6.5"
+            />
+            <path d="m16 16 4 4" />
+          </svg>
+          <span class="sr-only">Buscar atendimentos</span>
+          <input
+            type="search"
+            ng-model="vm.filters.search"
+            ng-change="vm.search()"
+            placeholder="Buscar cliente, telefone ou mensagem…"
+          />
+        </label>
+        <select
+          aria-label="Visualização salva"
+          ng-model="vm.selectedView"
+          ng-change="vm.chooseView()"
+        >
+          <option value="">Visualização padrão</option>
+          <option
+            ng-repeat="view in vm.views track by view.id"
+            value="{{view.id}}"
+          >
+            {{view.name}}
+          </option>
+        </select>
+        <button
+          ng-if="vm.selectedView"
+          ng-click="vm.deleteView()"
+        >
+          Excluir visualização
+        </button>
+        <div
+          class="kb-layout"
+          aria-label="Apresentação"
+        >
+          <button
+            ng-class="{'is-active': vm.layout === 'board'}"
+            ng-click="vm.layout = 'board'"
+          >
+            Quadro
+          </button>
+          <button
+            ng-class="{'is-active': vm.layout === 'list'}"
+            ng-click="vm.layout = 'list'"
+          >
+            Lista
+          </button>
+        </div>
+      </div>
+      <div class="kb-control-row">
+        <select
+          aria-label="Prioridade"
+          ng-model="vm.filters.priority"
+          ng-change="vm.load()"
+        >
+          <option value="">Todas as prioridades</option>
+          <option
+            ng-repeat="(key,label) in vm.priorities"
+            value="{{key}}"
+          >
+            {{label}}
+          </option>
+        </select>
+        <select
+          aria-label="Responsável"
+          ng-model="vm.filters.assignedMemberId"
+          ng-change="vm.load()"
+        >
+          <option value="">Todos os responsáveis</option>
+          <option
+            ng-repeat="member in vm.members track by member.id"
+            value="{{member.id}}"
+          >
+            {{member.name}}
+          </option>
+        </select>
+        <select
+          aria-label="Ordenação"
+          ng-model="vm.filters.sort"
+          ng-change="vm.load()"
+        >
+          <option value="ATTENTION">Precisam de atenção primeiro</option>
+          <option value="RECENT">Atividade recente</option>
+          <option value="OLDEST">Abertura mais antiga</option>
+        </select>
+        <label class="kb-check">
+          <input
+            type="checkbox"
+            ng-model="vm.filters.unassigned"
+            ng-change="vm.load()"
+          />
+          Sem responsável
+        </label>
+        <button
+          class="kb-clear"
+          ng-click="vm.clear()"
+        >
+          Limpar filtros
+        </button>
+        <span class="kb-actor">{{vm.visibleCount()}} carregados · filtros por etapa</span>
+      </div>
+    </section>
+    <p
+      class="kb-loading"
+      ng-if="vm.loading"
+      role="status"
+    >
+      Atualizando atendimentos…
+    </p>
+    <label class="kb-mobile-column">
+      <span>Etapa do atendimento</span>
+      <select
+        ng-model="vm.mobileStatus"
+        aria-label="Selecionar coluna"
+      >
+        <option value="">Todas as etapas</option>
+        <option
+          ng-repeat="column in vm.columns track by column.status"
+          value="{{column.status}}"
+        >
+          {{column.name}} ({{column.total}})
+        </option>
+      </select>
+    </label>
+    <section
+      class="kb-board"
+      ng-class="{'kb-list': vm.layout === 'list'}"
+      aria-label="Quadro de atendimentos"
+      aria-busy="{{vm.loading}}"
+    >
+      <section
+        class="kb-column"
+        ng-class="{'kb-mobile-hidden':vm.mobileStatus && column.status !== vm.mobileStatus}"
+        ng-repeat="column in vm.columns track by column.status"
+        kanban-drop="vm.move(card, column.status)"
+      >
+        <header>
+          <h2>
+            <i
+              class="kb-status-dot"
+              ng-class="column.status"
+            ></i>
+            {{column.name}}
+            <span>{{column.total}}</span>
+          </h2>
+        </header>
+        <div class="kb-column-cards">
+          <button
+            type="button"
+            class="kb-card"
+            ng-class="{'kb-card-breached':card.sla === 'BREACHED', 'kb-card-urgent':card.priority === 'URGENT'}"
+            ng-repeat="card in column.items track by card.conversation.id"
+            kanban-drag="card"
+            ng-click="vm.open(card)"
+          >
+            <div class="kb-card-top">
+              <span>#{{card.conversation.id.slice(-6).toUpperCase()}}</span>
+              <span
+                class="kb-priority"
+                ng-class="card.priority"
+              >
+                {{vm.priorities[card.priority]}}
+              </span>
+            </div>
+            <h3>{{card.conversation.displayName || card.conversation.contactPhone}}</h3>
+            <p class="kb-preview">{{card.conversation.lastMessagePreview || 'Sem mensagens externas'}}</p>
+            <div class="kb-card-signals">
+              <span
+                class="kb-department"
+                ng-if="vm.departmentName(card.departmentId)"
+              >
+                {{vm.departmentName(card.departmentId)}}
+              </span>
+              <span
+                class="kb-sla"
+                ng-class="card.sla"
+              >
+                {{vm.slaLabels[card.sla]}}
+              </span>
+            </div>
+            <div class="kb-card-owner">
+              <span class="kb-avatar">
+                {{vm.initials(vm.memberName(card.conversation.assignedMemberId))}}
+              </span>
+              <span>{{vm.memberName(card.conversation.assignedMemberId)}}</span>
+              <span
+                class="kb-channel"
+                title="{{vm.channelName(card.conversation.channelId)}}"
+              >
+                {{vm.channelName(card.conversation.channelId)}}
+              </span>
+            </div>
+            <footer>
+              <span ng-if="card.conversation.status !== 'RESOLVED' && card.conversation.status !== 'CLOSED'">
+                {{card.waitingForAgentSince ? 'Cliente espera há ' : 'Aberto há
+                '}}{{vm.duration(card.waitingForAgentSince || card.conversation.createdAt)}}
+              </span>
+              <span ng-if="card.conversation.status === 'RESOLVED'">{{vm.resolution(card)}}</span>
+              <span ng-if="card.conversation.status === 'CLOSED'">Atendimento encerrado</span>
+              <span
+                class="kb-attention"
+                ng-if="card.attentionScore"
+                title="{{card.attentionReasons.join(' · ')}}"
+              >
+                {{card.attentionReasons[0] || 'Requer atenção'}}
+              </span>
+            </footer>
+          </button>
+          <div
+            class="kb-empty"
+            ng-if="!column.items.length && !vm.loading"
+          >
+            Nenhum atendimento
+          </div>
+          <button
+            class="kb-load-more"
+            ng-if="column.hasMore"
+            ng-click="vm.more(column)"
+            ng-disabled="column.loading"
+          >
+            {{column.loading ? 'Carregando…' : 'Carregar mais'}}
+          </button>
+        </div>
+      </section>
+    </section>
+  </main>
+  <div
+    class="kb-drawer-backdrop"
+    ng-if="vm.detail"
+    ng-click="vm.detail = null"
+  ></div>
+  <aside
+    focus-region="!!vm.detail"
+    on-region-close="vm.detail = null"
+    class="kb-drawer"
+    ng-if="vm.detail"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Detalhes do atendimento"
+  >
+    <header>
+      <div>
+        <p class="kb-eyebrow">ATENDIMENTO #{{vm.detail.conversation.id.slice(-6).toUpperCase()}}</p>
+        <h2>{{vm.detail.conversation.displayName}}</h2>
+        <p>{{vm.detail.conversation.contactPhone}}</p>
+      </div>
+      <button
+        ng-click="vm.detail = null"
+        aria-label="Fechar detalhes"
+      >
+        ✕
+      </button>
+    </header>
+    <a
+      class="kb-open-chat"
+      href="#!/?conversation={{vm.detail.conversation.id}}"
+    >
+      Abrir conversa completa ↗
+    </a>
+    <div class="kb-drawer-metrics">
+      <div>
+        <span>Aberto há</span>
+        <strong>{{vm.duration(vm.detail.conversation.createdAt)}}</strong>
+      </div>
+      <div>
+        <span>Espera da equipe</span>
+        <strong>
+          {{vm.detail.waitingForAgentSince ? vm.duration(vm.detail.waitingForAgentSince) : 'Sem espera
+          registrada'}}
+        </strong>
+      </div>
+      <div>
+        <span>SLA</span>
+        <strong>{{vm.slaLabels[vm.detail.sla]}}</strong>
+      </div>
+      <div>
+        <span>Reaberturas registradas</span>
+        <strong>{{vm.detail.reopenCount}}</strong>
+      </div>
+    </div>
+    <p
+      class="kb-error"
+      ng-if="vm.error"
+      role="alert"
+    >
+      {{vm.error}}
+    </p>
+    <section class="kb-drawer-section">
+      <h3>Responsabilidade</h3>
+      <label>
+        Responsável
+        <select
+          ng-model="vm.targetMember"
+          ng-options="member.id as member.name for member in vm.members | filter:{status:'ACTIVE'}"
+        >
+          <option value="">Não atribuído</option>
+        </select>
+      </label>
+      <button
+        ng-disabled="vm.busy || !vm.targetMember"
+        ng-click="vm.assign()"
+      >
+        {{vm.detail.conversation.assignedMemberId ? 'Transferir atendimento' : 'Atribuir atendimento'}}
+      </button>
+    </section>
+    <section class="kb-drawer-section">
+      <h3>Situação</h3>
+      <label>
+        Status
+        <select
+          ng-model="vm.targetStatus"
+          ng-options="column.status as column.name for column in vm.columns"
+        ></select>
+      </label>
+      <button
+        ng-disabled="vm.busy"
+        ng-click="vm.move(vm.detail, vm.targetStatus)"
+      >
+        Alterar status
+      </button>
+      <label>
+        Prioridade
+        <select
+          ng-model="vm.targetPriority"
+          ng-options="key as label for (key,label) in vm.priorities"
+        ></select>
+      </label>
+      <button
+        ng-disabled="vm.busy"
+        ng-click="vm.changePriority()"
+      >
+        Salvar prioridade
+      </button>
+    </section>
+    <section class="kb-drawer-section">
+      <h3>Sinais de atenção</h3>
+      <p ng-repeat="reason in vm.detail.attentionReasons">{{reason}}</p>
+      <p ng-if="!vm.detail.attentionReasons.length">Sem sinal de atenção registrado.</p>
+    </section>
+    <section class="kb-drawer-section">
+      <h3>Histórico operacional recente</h3>
+      <article
+        class="kb-history"
+        ng-repeat="event in vm.history track by event.id"
+      >
+        <strong>{{vm.eventLabel(event)}}</strong>
+        <p>{{event.createdAt | date:'dd/MM/yyyy HH:mm'}}</p>
+        <p ng-if="event.reason">{{event.reason}}</p>
+      </article>
+      <p ng-if="!vm.history.length">Sem eventos disponíveis.</p>
+    </section>
+  </aside>
+  <app-modal
+    open="!!vm.confirmation"
+    title="Alterar status"
+    busy="vm.busy"
+    on-close="vm.confirmation = null"
+  >
+    <p>Confirmar mudança do atendimento para {{vm.statusName(vm.confirmation.status)}}?</p>
+    <p class="mt-2 text-sm text-slate-500">
+      A alteração será registrada no histórico. Conflitos serão rejeitados pelo servidor.
+    </p>
+    <button
+      class="kb-primary mt-5"
+      ng-click="vm.confirmMove()"
+    >
+      Confirmar mudança
+    </button>
+  </app-modal>
+  <app-modal
+    open="!!vm.assignmentConfirmation"
+    title="Confirmar atribuição"
+    busy="vm.busy"
+    on-close="vm.assignmentConfirmation = false"
+  >
+    <p>
+      Transferir a responsabilidade para {{vm.memberName(vm.targetMember)}}? O responsável anterior perderá
+      acesso.
+    </p>
+    <button
+      class="kb-primary mt-5"
+      ng-click="vm.confirmAssign()"
+    >
+      Confirmar atribuição
+    </button>
+  </app-modal>
+  <app-modal
+    open="!!vm.savingView"
+    title="Salvar visualização pessoal"
+    busy="vm.busy"
+    on-close="vm.savingView = false"
+  >
+    <form ng-submit="vm.saveView()">
+      <label class="block">
+        Nome
+        <input
+          class="mt-2 w-full rounded-lg border border-slate-200 p-3"
+          ng-model="vm.viewName"
+          required
+          maxlength="80"
+        />
+      </label>
+      <button
+        class="kb-primary mt-5"
+        type="submit"
+      >
+        Salvar filtros e apresentação
+      </button>
+    </form>
+  </app-modal>
+</div>

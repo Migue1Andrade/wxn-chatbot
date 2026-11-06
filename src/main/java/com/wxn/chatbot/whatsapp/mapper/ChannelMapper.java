@@ -10,7 +10,6 @@ public final class ChannelMapper {
     public static ChannelDtos.Response response(WhatsAppChannel c) {
         return new ChannelDtos.Response(
             c.getId(),
-            c.getCompanyId(),
             c.getName(),
             c.getProvider(),
             c.getPhoneNumber(),

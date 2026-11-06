@@ -8,9 +8,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 public interface ConversationActivityRepository extends MongoRepository<ConversationActivity, ObjectId> {
-    Optional<ConversationActivity> findByEventKeyAndCompanyId(String eventKey, Long companyId);
-    List<ConversationActivity> findByCompanyIdAndConversationIdOrderByCreatedAtAscIdAsc(
-        Long companyId,
+    List<ConversationActivity> findByConversationIdOrderByCreatedAtDescIdDesc(
+        ObjectId conversationId,
+        Pageable pageable
+    );
+    Optional<ConversationActivity> findByEventKey(String eventKey);
+    List<ConversationActivity> findByConversationIdOrderByCreatedAtAscIdAsc(
         ObjectId conversationId,
         Pageable pageable
     );

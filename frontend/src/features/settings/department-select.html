@@ -1,0 +1,34 @@
+<div class="space-y-3 rounded-xl border border-slate-200 p-3">
+  <div class="flex flex-wrap gap-2">
+    <button
+      type="button"
+      ng-repeat="department in $ctrl.departments track by department.id"
+      ng-if="$ctrl.selected.indexOf(department.id) >= 0"
+      ng-click="$ctrl.toggle(department.id)"
+      aria-label="Remover {{department.name}}"
+    >
+      <department-tag department="department"></department-tag>
+      ×
+    </button>
+  </div>
+  <input
+    type="search"
+    ng-model="$ctrl.query"
+    placeholder="Buscar setor"
+    aria-label="Buscar setor"
+    class="w-full rounded-lg border p-2"
+  />
+  <div class="max-h-44 space-y-2 overflow-y-auto">
+    <label
+      class="flex cursor-pointer items-center gap-2"
+      ng-repeat="department in $ctrl.departments | filter: {name: $ctrl.query} track by department.id"
+    >
+      <input
+        type="checkbox"
+        ng-checked="$ctrl.selected.indexOf(department.id) >= 0"
+        ng-click="$ctrl.toggle(department.id)"
+      />
+      <department-tag department="department"></department-tag>
+    </label>
+  </div>
+</div>

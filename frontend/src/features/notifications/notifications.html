@@ -1,0 +1,72 @@
+<div class="flex min-h-screen bg-slate-50 text-slate-800">
+  <management-navigation></management-navigation>
+  <main class="product-page mx-auto min-w-0 w-full max-w-4xl p-6 sm:p-10">
+    <header class="mb-8 flex items-center justify-between gap-5">
+      <div>
+        <h1 class="text-2xl font-semibold">Notificações</h1>
+        <p
+          class="mt-2 text-sm text-slate-500"
+          aria-live="polite"
+        >
+          {{vm.state.count}} não lidas
+        </p>
+      </div>
+      <button
+        ng-click="vm.center.readAll()"
+        class="text-sm text-teal-700"
+      >
+        Marcar todas como lidas
+      </button>
+    </header>
+    <error-state
+      ng-if="vm.state.error"
+      message="{{vm.state.error}}"
+      on-retry="vm.center.load()"
+    ></error-state>
+    <table-skeleton ng-if="vm.state.loading"></table-skeleton>
+    <section
+      ng-if="!vm.state.loading"
+      class="overflow-hidden rounded-xl border border-slate-200 bg-white"
+    >
+      <article
+        ng-repeat="row in vm.state.items track by row.id"
+        ng-class="{'bg-teal-50/40': !row.readAt}"
+        class="border-b border-slate-100 p-5 last:border-0"
+      >
+        <div class="flex justify-between gap-5">
+          <div>
+            <h2 class="text-sm font-medium">{{row.title}}</h2>
+            <p class="mt-2 text-xs text-slate-400">{{row.createdAt | date:'dd/MM/yyyy HH:mm'}}</p>
+          </div>
+          <button
+            ng-if="!row.readAt"
+            ng-click="vm.center.read(row)"
+            class="text-xs text-teal-700"
+          >
+            Marcar como lida
+          </button>
+        </div>
+        <button
+          type="button"
+          ng-click="$event.stopPropagation(); vm.center.open(row)"
+          class="mt-3 inline-block text-xs text-teal-700"
+        >
+          Abrir contexto e ações ↗
+        </button>
+      </article>
+      <p
+        ng-if="!vm.state.items.length && !vm.state.loading && !vm.state.error"
+        class="py-16 text-center text-sm text-slate-400"
+      >
+        Você está em dia. Nenhuma notificação.
+      </p>
+    </section>
+    <button
+      ng-if="vm.state.more"
+      ng-click="vm.center.load(true)"
+      class="mt-6 text-sm text-teal-700"
+    >
+      Carregar mais
+    </button>
+  </main>
+</div>

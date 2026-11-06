@@ -27,6 +27,11 @@ import org.springframework.stereotype.Service;
 @Service
 public class MessageService {
 
+    private final java.util.concurrent.ConcurrentMap<
+        Long,
+        java.util.concurrent.locks.ReentrantLock
+    > channelLocks = new java.util.concurrent.ConcurrentHashMap<>();
+    private final MessageStatusService statuses;
     private final MessageRepository repository;
     private final ConversationService conversations;
     private final ChannelService channels;
@@ -42,8 +47,10 @@ public class MessageService {
         MemberService members,
         WhatsAppProviderResolver providers,
         MessageLogService logs,
-        ConversationEventPublisher events
+        ConversationEventPublisher events,
+        MessageStatusService statuses
     ) {
+        this.statuses = statuses;
         this.repository = repository;
         this.conversations = conversations;
         this.channels = channels;
@@ -53,29 +60,29 @@ public class MessageService {
         this.events = events;
     }
 
-    public List<NormalizedMessage> history(Long companyId, String conversationId, int page, int size) {
-        Conversation c = conversations.require(companyId, conversationId);
+    public List<NormalizedMessage> history(String conversationId, int page, int size) {
+        Conversation c = conversations.require(conversationId);
         return repository
-            .findByCompanyIdAndConversationIdOrderByCreatedAtAsc(
-                companyId,
-                c.getId(),
-                ConversationService.page(page, size)
-            )
+            .findByConversationIdOrderByCreatedAtAsc(c.getId(), ConversationService.page(page, size))
             .stream()
-            .map(MessageMapper::response)
+            .map(this::response)
             .toList();
     }
 
-    public MessagePage page(Long companyId, String conversationId, int limit, String before) {
-        if (limit < 1 || limit > 100) throw ApiException.badRequest("limit deve estar entre 1 e 100");
-        Conversation conversation = conversations.require(companyId, conversationId);
+    public MessagePage page(String conversationId, int limit, String before) {
+        if (limit < 1 || limit > 100) {
+            throw ApiException.badRequest("limit deve estar entre 1 e 100");
+        }
+        Conversation conversation = conversations.require(conversationId);
         var cursor = before == null ? null : MessageCursor.decode(before);
-        var rows = new ArrayList<>(repository.before(companyId, conversation.getId(), cursor, limit + 1));
+        var rows = new ArrayList<>(repository.before(conversation.getId(), cursor, limit + 1));
         boolean more = rows.size() > limit;
-        if (more) rows.remove(rows.size() - 1);
+        if (more) {
+            rows.remove(rows.size() - 1);
+        }
         String next = more && !rows.isEmpty() ? MessageCursor.of(rows.get(rows.size() - 1)).encode() : null;
         Collections.reverse(rows);
-        return new MessagePage(rows.stream().map(MessageMapper::response).toList(), next, more);
+        return new MessagePage(rows.stream().map(this::response).toList(), next, more);
     }
 
     public NormalizedMessage receive(
@@ -84,29 +91,27 @@ public class MessageService {
         boolean simulated
     ) {
         // The channel is resolved and authenticated by the ingress service before normalization.
-        channels.requireActive(channel.getCompanyId(), channel.getId());
-        if (
-            !Objects.equals(channel.getPhoneNumber(), incoming.recipientPhone())
-        ) throw ApiException.badRequest("Destinatário não corresponde ao canal");
-        Optional<Message> existing = repository.findByCompanyIdAndChannelIdAndExternalMessageId(
-            channel.getCompanyId(),
+        channels.requireActive(channel.getId());
+        if (!Objects.equals(channel.getPhoneNumber(), incoming.recipientPhone())) {
+            throw ApiException.badRequest("Destinatário não corresponde ao canal");
+        }
+        Optional<Message> existing = repository.findByChannelIdAndExternalMessageId(
             channel.getId(),
             incoming.externalMessageId()
         );
-        if (existing.isPresent()) return existingInbound(channel, existing.get(), incoming);
+        if (existing.isPresent()) {
+            return existingInbound(channel, existing.get(), incoming);
+        }
         Conversation c = conversations.individual(channel, incoming.senderPhone());
         Message m = MessageMapper.inbound(channel, c, incoming, simulated);
+        resolveReply(m);
         try {
             m = repository.insert(m);
         } catch (DuplicateKeyException concurrent) {
             return existingInbound(
                 channel,
                 repository
-                    .findByCompanyIdAndChannelIdAndExternalMessageId(
-                        channel.getCompanyId(),
-                        channel.getId(),
-                        incoming.externalMessageId()
-                    )
+                    .findByChannelIdAndExternalMessageId(channel.getId(), incoming.externalMessageId())
                     .orElseThrow(() -> concurrent),
                 incoming
             );
@@ -122,10 +127,12 @@ public class MessageService {
         if (
             Direction.OUTBOUND.name().equals(message.getDirection()) ||
             (message.getSenderPhone() != null && !message.getSenderPhone().equals(incoming.senderPhone()))
-        ) throw ApiException.conflict("Identificador externo já vinculado a outra mensagem");
+        ) {
+            throw ApiException.conflict("Identificador externo já vinculado a outra mensagem");
+        }
         return Boolean.FALSE.equals(message.getInboundCompleted())
             ? finishInbound(channel, message, incoming)
-            : MessageMapper.response(message);
+            : response(message);
     }
 
     private NormalizedMessage finishInbound(
@@ -133,107 +140,362 @@ public class MessageService {
         Message message,
         NormalizedInboundMessage incoming
     ) {
-        Conversation conversation = conversations.require(
-            channel.getCompanyId(),
-            message.getConversationId().toHexString()
-        );
+        Conversation conversation = conversations.require(message.getConversationId().toHexString());
         conversations.updateContact(conversation, incoming.senderDisplayName());
         conversations.touch(conversation, message);
         logs.record(message, MessageLogEvent.RECEIVED);
-        if (repository.completeInbound(message)) events.publish(
-            ConversationEventTypes.MESSAGE_RECEIVED,
-            message.getCompanyId(),
-            MessageMapper.response(message)
-        );
-        return MessageMapper.response(message);
+        if (repository.completeInbound(message)) {
+            events.publish(ConversationEventTypes.MESSAGE_RECEIVED, response(message));
+        }
+        return response(message);
     }
 
-    public NormalizedMessage send(Long companyId, String conversationId, MessageDtos.Send request) {
-        Conversation c = conversations.require(companyId, conversationId);
-        if (c.operationalStatus() == ConversationStatus.CLOSED) throw ApiException.conflict(
-            "Reabra o atendimento antes de enviar mensagens"
-        );
-        WhatsAppChannel channel = channels.requireActive(companyId, request.channelId());
-        if (
-            !Objects.equals(c.getChannelId(), channel.getId()) || c.getProvider() != channel.getProvider()
-        ) throw ApiException.badRequest("Conversa pertence a outro canal ou é legada sem canal");
-        members.requireActive(companyId, request.memberId());
+    public NormalizedMessage send(String conversationId, MessageDtos.Send request) {
+        return sendOperation(conversationId, request, null, null);
+    }
+
+    public NormalizedMessage sendOperation(
+        String conversationId,
+        MessageDtos.Send request,
+        Message reply,
+        Message forwarded
+    ) {
+        var lock = acquireChannel(conversations.require(conversationId).getChannelId());
+        try {
+            if (forwarded != null) {
+                return conversations.withWriteLock(forwarded.getConversationId().toHexString(), () ->
+                    conversations.withWriteLock(conversationId, () ->
+                        performSend(conversationId, request, reply, forwarded)
+                    )
+                );
+            }
+            return conversations.withWriteLock(conversationId, () ->
+                performSend(conversationId, request, reply, forwarded)
+            );
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private NormalizedMessage performSend(
+        String conversationId,
+        MessageDtos.Send request,
+        Message reply,
+        Message forwarded
+    ) {
+        Conversation c = conversations.require(conversationId);
+        if (c.operationalStatus() == ConversationStatus.CLOSED) {
+            throw ApiException.conflict("Reabra o atendimento antes de enviar mensagens");
+        }
+        WhatsAppChannel channel = channels.requireActive(request.channelId());
+        if (!Objects.equals(c.getChannelId(), channel.getId()) || c.getProvider() != channel.getProvider()) {
+            throw ApiException.badRequest("Conversa não pertence ao canal informado");
+        }
+        if (request.memberId() != null) {
+            members.requireActive(request.memberId());
+        }
         String recipient = PhoneNumbers.required(c.getContactPhone());
-        if (
-            request.content() == null || request.content().isBlank() || request.content().length() > 1600
-        ) throw ApiException.badRequest("Texto obrigatório, até 1600 caracteres");
-        if (c.getConversationType() != ConversationType.INDIVIDUAL) throw ApiException.badRequest(
-            "Envio disponível apenas em conversas individuais"
-        );
+        if (request.content() == null || request.content().isBlank() || request.content().length() > 1600) {
+            throw ApiException.badRequest("Texto obrigatório, até 1600 caracteres");
+        }
+        if (c.getConversationType() != ConversationType.INDIVIDUAL) {
+            throw ApiException.badRequest("Envio disponível apenas em conversas individuais");
+        }
         WhatsAppProvider adapter = providers.forSend(channel, c.getConversationType(), MessageType.TEXT);
-        Message m = repository.insert(
-            MessageMapper.outbound(channel, c, request, recipient, adapter.capabilities().simulated())
+        if (request.operationId() != null) {
+            var existing = repository.findByChannelIdAndOperationId(channel.getId(), request.operationId());
+            if (existing.isPresent()) {
+                return repeated(existing.get(), c, request, reply, forwarded);
+            }
+        }
+        if (request.actorUserId() != null) {
+            members.requireMessageActor(request.actorUserId(), request.memberId(), c.getAssignedMemberId());
+        }
+        Message m = MessageMapper.outbound(
+            channel,
+            c,
+            request,
+            recipient,
+            adapter.capabilities().simulated()
         );
+        if (reply != null) {
+            m.setReplyToMessageId(reply.getId().toHexString());
+            m.setReplyToExternalMessageId(reply.getExternalMessageId());
+            m.setReplyPreview(reply.getContent().getString("text"));
+        }
+        if (forwarded != null) {
+            m.setForwardedFromMessageId(forwarded.getId().toHexString());
+        }
+        try {
+            m = repository.insert(m);
+        } catch (DuplicateKeyException duplicate) {
+            if (request.operationId() == null) {
+                throw duplicate;
+            }
+            return repeated(
+                repository
+                    .findByChannelIdAndOperationId(channel.getId(), request.operationId())
+                    .orElseThrow(() -> duplicate),
+                c,
+                request,
+                reply,
+                forwarded
+            );
+        }
         conversations.touch(c, m);
         logs.record(m, MessageLogEvent.SEND_ATTEMPTED);
+        if (request.actorUserId() != null) {
+            members.requireMessageActor(
+                request.actorUserId(),
+                request.memberId(),
+                conversations.require(conversationId).getAssignedMemberId()
+            );
+        }
         SendMessageResult result;
         try {
-            result = adapter.send(
-                channel,
-                new SendMessageRequest(
-                    m.getId().toHexString(),
-                    companyId,
-                    channel.getId(),
-                    recipient,
-                    request.content(),
-                    c.getConversationType(),
-                    MessageType.TEXT
-                )
+            SendMessageRequest command = new SendMessageRequest(
+                m.getId().toHexString(),
+                channel.getId(),
+                recipient,
+                request.content(),
+                c.getConversationType(),
+                MessageType.TEXT
             );
+            if (reply != null) {
+                result = adapter.reply(channel, command, reply.getExternalMessageId());
+            } else if (forwarded != null) {
+                Conversation source = conversations.require(forwarded.getConversationId().toHexString());
+                if (request.actorUserId() != null) {
+                    members.requireMessageActor(
+                        request.actorUserId(),
+                        request.memberId(),
+                        source.getAssignedMemberId()
+                    );
+                }
+                result = adapter.forward(
+                    channel,
+                    new ForwardMessageRequest(
+                        command,
+                        forwarded.getExternalMessageId(),
+                        source.getContactPhone()
+                    )
+                );
+            } else {
+                result = adapter.send(channel, command);
+            }
         } catch (RuntimeException error) {
             String code =
                 error instanceof ProviderSendException failure
                     ? failure.code()
                     : "PROVIDER_CONFIGURATION_OR_SEND_FAILURE";
-            m = changeStatus(m, NormalizedMessageStatus.FAILED, code);
-            logs.record(m, MessageLogEvent.SEND_FAILED);
-            return MessageMapper.response(m);
+            boolean uncertain = code.endsWith("UNKNOWN");
+            m = changeStatus(
+                m,
+                uncertain ? NormalizedMessageStatus.UNKNOWN : NormalizedMessageStatus.FAILED,
+                code
+            );
+            logs.record(m, uncertain ? MessageLogEvent.SEND_UNKNOWN : MessageLogEvent.SEND_FAILED);
+            return response(m);
         }
         // Persist SID before replaying callbacks that may have arrived during the HTTP send.
+        repository.providerIds(m, result.providerTrackingId(), result.providerResponseId());
         repository.associateExternalId(m, result.externalMessageId(), result.simulated());
         m.setExternalMessageId(result.externalMessageId());
         m.setSimulated(result.simulated());
+        m.setProviderTrackingId(result.providerTrackingId());
+        for (var delivery : logs.tracked(m)) {
+            repository.associateExternalId(m, delivery.getExternalMessageId(), result.simulated());
+            m.setExternalMessageId(delivery.getExternalMessageId());
+        }
         m = changeStatus(m, result.status(), null);
-        for (var log : logs.callbacks(m)) m = changeStatus(m, log.getStatus(), log.getErrorCode());
-        m = repository.findByIdAndCompanyId(m.getId(), m.getCompanyId()).orElseThrow();
-        logs.record(m, MessageLogEvent.SENT);
-        events.publish(ConversationEventTypes.MESSAGE_SENT, companyId, MessageMapper.response(m));
-        return MessageMapper.response(m);
+        for (var log : logs.callbacks(m)) {
+            m = changeStatus(m, log.getStatus(), log.getErrorCode());
+        }
+        m = repository.findById(m.getId()).orElseThrow();
+        logs.record(
+            m,
+            result.status() == NormalizedMessageStatus.ACCEPTED
+                ? MessageLogEvent.SEND_ACCEPTED
+                : result.simulated()
+                  ? MessageLogEvent.SEND_SIMULATED
+                  : MessageLogEvent.SENT
+        );
+        events.publish(ConversationEventTypes.MESSAGE_SENT, response(m));
+        return response(m);
+    }
+
+    private NormalizedMessage repeated(
+        Message existing,
+        Conversation conversation,
+        MessageDtos.Send request,
+        Message reply,
+        Message forwarded
+    ) {
+        if (
+            !Objects.equals(existing.getConversationId(), conversation.getId()) ||
+            !Objects.equals(existing.getMemberId(), request.memberId()) ||
+            !Objects.equals(existing.getActorUserId(), request.actorUserId()) ||
+            !Objects.equals(existing.getContent().getString("text"), request.content()) ||
+            !Objects.equals(
+                existing.getReplyToMessageId(),
+                reply == null ? null : reply.getId().toHexString()
+            ) ||
+            !Objects.equals(
+                existing.getForwardedFromMessageId(),
+                forwarded == null ? null : forwarded.getId().toHexString()
+            )
+        ) {
+            throw ApiException.conflict("operationId já utilizado em outra operação");
+        }
+        return response(existing);
     }
 
     public void status(WhatsAppChannel channel, NormalizedStatusEvent status) {
         // Persist first, including callbacks that precede SID association; send reconciles them.
         logs.callback(channel, status);
         repository
-            .findByCompanyIdAndChannelIdAndExternalMessageId(
-                channel.getCompanyId(),
-                channel.getId(),
-                status.externalMessageId()
-            )
+            .findByChannelIdAndExternalMessageId(channel.getId(), status.externalMessageId())
             .filter(m -> Direction.OUTBOUND.name().equals(m.getDirection()))
             .ifPresent(m -> changeStatus(m, status.status(), status.errorCode()));
     }
 
-    private Message changeStatus(Message m, NormalizedMessageStatus next, String errorCode) {
-        List<NormalizedMessageStatus> prior = allowedPrevious(next);
-        if (prior.isEmpty()) return repository
-            .findByIdAndCompanyId(m.getId(), m.getCompanyId())
-            .orElseThrow();
-        Message updated = repository.updateStatus(m, next, errorCode, prior).orElse(null);
-        if (updated == null) return repository
-            .findByIdAndCompanyId(m.getId(), m.getCompanyId())
-            .orElseThrow();
-        events.publish(
-            ConversationEventTypes.MESSAGE_STATUS_UPDATED,
-            updated.getCompanyId(),
-            MessageMapper.response(updated)
+    public void echo(WhatsAppChannel channel, NormalizedInboundMessage incoming, Boolean fromApi) {
+        logs.echo(channel, incoming);
+        var lock = acquireChannel(channel.getId());
+        try {
+            applyEcho(channel, incoming, fromApi);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private java.util.concurrent.locks.ReentrantLock acquireChannel(Long id) {
+        var lock = channelLocks.computeIfAbsent(id, ignored ->
+            new java.util.concurrent.locks.ReentrantLock()
         );
-        return updated;
+        try {
+            if (!lock.tryLock(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                throw ApiException.conflict(
+                    "Canal com outra operação em andamento; consulte o estado antes de repetir"
+                );
+            }
+            return lock;
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw ApiException.conflict("Operação interrompida antes do envio");
+        }
+    }
+
+    private void applyEcho(WhatsAppChannel channel, NormalizedInboundMessage incoming, Boolean fromApi) {
+        if (
+            repository
+                .findByChannelIdAndExternalMessageId(channel.getId(), incoming.externalMessageId())
+                .isPresent()
+        ) {
+            status(
+                channel,
+                new NormalizedStatusEvent(incoming.externalMessageId(), NormalizedMessageStatus.SENT, null)
+            );
+        } else if (
+            Boolean.TRUE.equals(fromApi) ||
+            (fromApi == null &&
+                !repository
+                    .findByChannelIdAndDirectionAndStatusIn(
+                        channel.getId(),
+                        Direction.OUTBOUND.name(),
+                        List.of(NormalizedMessageStatus.PENDING, NormalizedMessageStatus.UNKNOWN)
+                    )
+                    .isEmpty())
+        ) {
+            // Preserve the envelope for bounded retry until an explicit remote identity can be correlated.
+            status(
+                channel,
+                new NormalizedStatusEvent(incoming.externalMessageId(), NormalizedMessageStatus.SENT, null)
+            );
+            throw ApiException.conflict("Correlação da mensagem externa pendente");
+        } else {
+            externalOutbound(channel, incoming, fromApi == null ? "WHATSAPP_EXTERNAL" : "WHATSAPP_APP");
+        }
+    }
+
+    public void delivery(WhatsAppChannel channel, String tracking, NormalizedStatusEvent event) {
+        logs.delivery(channel, tracking, event);
+        if (tracking != null) {
+            repository.findByChannelIdAndProviderTrackingId(channel.getId(), tracking).ifPresent(m -> {
+                repository.associateExternalId(m, event.externalMessageId(), false);
+            });
+        }
+        status(channel, event);
+    }
+
+    private NormalizedMessage externalOutbound(
+        WhatsAppChannel channel,
+        NormalizedInboundMessage incoming,
+        String origin
+    ) {
+        var existing = repository.findByChannelIdAndExternalMessageId(
+            channel.getId(),
+            incoming.externalMessageId()
+        );
+        if (existing.isPresent()) {
+            return response(existing.get());
+        }
+        Conversation c = conversations.individual(channel, incoming.senderPhone());
+        Message message = MessageMapper.inbound(
+            channel,
+            c,
+            incoming,
+            providers.resolve(channel).capabilities().simulated()
+        );
+        message.setDirection(Direction.OUTBOUND.name());
+        message.setSenderPhone(channel.getPhoneNumber());
+        message.setRecipientPhone(incoming.senderPhone());
+        message.setOrigin(origin);
+        resolveReply(message);
+        message.setStatus(NormalizedMessageStatus.SENT);
+        message.setInboundCompleted(true);
+        try {
+            message = repository.insert(message);
+        } catch (DuplicateKeyException duplicate) {
+            return response(
+                repository
+                    .findByChannelIdAndExternalMessageId(channel.getId(), incoming.externalMessageId())
+                    .orElseThrow(() -> duplicate)
+            );
+        }
+        conversations.touch(c, message);
+        logs.record(message, MessageLogEvent.SENT);
+        for (var log : logs.callbacks(message)) {
+            message = changeStatus(message, log.getStatus(), log.getErrorCode());
+        }
+        events.publish(ConversationEventTypes.MESSAGE_SENT, response(message));
+        return response(message);
+    }
+
+    private void resolveReply(Message message) {
+        if (message.getReplyToExternalMessageId() == null) {
+            return;
+        }
+        repository
+            .findByChannelIdAndExternalMessageId(
+                message.getChannelId(),
+                message.getReplyToExternalMessageId()
+            )
+            .filter(original -> Objects.equals(original.getConversationId(), message.getConversationId()))
+            .ifPresent(original -> {
+                message.setReplyToMessageId(original.getId().toHexString());
+                if (original.getDeletedAt() == null && original.getContent() != null) {
+                    message.setReplyPreview(original.getContent().getString("text"));
+                }
+            });
+    }
+
+    private Message changeStatus(Message message, NormalizedMessageStatus next, String errorCode) {
+        return statuses.apply(message, next, errorCode);
+    }
+
+    private NormalizedMessage response(Message message) {
+        return MessageMapper.response(message, providers.messageCapabilities(message.getProvider()));
     }
 
     public static List<NormalizedMessageStatus> allowedPrevious(NormalizedMessageStatus next) {

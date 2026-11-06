@@ -1,0 +1,47 @@
+<main class="login-page flex min-h-screen items-center justify-center bg-slate-50 px-6 text-slate-800">
+  <form
+    name="loginForm"
+    ng-submit="loginForm.$valid && vm.login()"
+    class="w-full max-w-sm space-y-5 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
+  >
+    <div class="workspace-brand">W</div>
+    <h1 class="text-2xl font-semibold">Entrar na WXN</h1>
+    <p
+      ng-if="vm.error"
+      role="alert"
+      class="text-sm text-red-700"
+    >
+      {{vm.error}}
+    </p>
+    <label class="block">
+      Nome de usuário
+      <input
+        name="username"
+        ng-model="vm.form.username"
+        required
+        maxlength="100"
+        autocomplete="username"
+        class="mt-1 w-full rounded-lg border p-3"
+      />
+    </label>
+    <label class="block">
+      Senha
+      <input
+        type="password"
+        name="password"
+        ng-model="vm.form.password"
+        required
+        maxlength="72"
+        autocomplete="current-password"
+        class="mt-1 w-full rounded-lg border p-3"
+      />
+    </label>
+    <button
+      type="submit"
+      ng-disabled="vm.busy || loginForm.$invalid"
+      class="w-full rounded-xl bg-teal-700 p-3 text-white disabled:opacity-40"
+    >
+      {{vm.busy ? 'Entrando…' : 'Entrar'}}
+    </button>
+  </form>
+</main>

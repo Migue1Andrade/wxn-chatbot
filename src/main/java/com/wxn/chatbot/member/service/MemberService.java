@@ -1,13 +1,14 @@
 package com.wxn.chatbot.member.service;
 
 import com.wxn.chatbot.common.*;
-import com.wxn.chatbot.company.service.CompanyService;
+import com.wxn.chatbot.department.entity.Department;
 import com.wxn.chatbot.member.dto.MemberDtos;
 import com.wxn.chatbot.member.entity.*;
 import com.wxn.chatbot.member.mapper.MemberMapper;
 import com.wxn.chatbot.member.repository.MemberRepository;
 import com.wxn.chatbot.user.service.UserService;
 import java.util.List;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,68 +17,109 @@ import org.springframework.transaction.annotation.Transactional;
 public class MemberService {
 
     private final MemberRepository repository;
-    private final CompanyService companies;
     private final UserService users;
 
-    public MemberService(MemberRepository repository, CompanyService companies, UserService users) {
+    public MemberService(MemberRepository repository, UserService users) {
         this.repository = repository;
-        this.companies = companies;
         this.users = users;
     }
 
-    public MemberDtos.Response create(Long companyId, MemberDtos.Create request) {
-        companies.require(companyId);
-        if (request.type() == MemberType.HUMAN && request.userId() == null) throw ApiException.badRequest(
-            "Membro humano exige userId"
-        );
-        if (request.userId() != null) users.require(companyId, request.userId());
+    public MemberDtos.Response create(MemberDtos.Create request) {
+        if (request.type() == MemberType.HUMAN) {
+            throw ApiException.badRequest(
+                "Cadastre o atendente pelo formulário de usuários com CPF, e-mail e senha inicial"
+            );
+        }
+        if (request.departmentIds() != null && !request.departmentIds().isEmpty()) {
+            throw ApiException.badRequest("BOT não recebe setores");
+        }
+        if (request.userId() != null) {
+            throw ApiException.badRequest("BOT não deve possuir usuário");
+        }
+        Long userId = null;
+        Set<Department> departments = Set.of();
+        Member member = new Member(userId, request.name().trim(), request.type(), ActiveStatus.ACTIVE);
+        member.update(request.name(), ActiveStatus.ACTIVE, departments);
+        return response(repository.save(member));
+    }
+
+    private MemberDtos.Response response(Member member) {
+        var user = member.getUserId() == null ? null : users.require(member.getUserId());
         return MemberMapper.response(
-            repository.save(
-                new Member(
-                    companyId,
-                    request.userId(),
-                    request.name().trim(),
-                    request.type(),
-                    request.status() == null ? ActiveStatus.ACTIVE : request.status()
-                )
-            )
+            member,
+            user == null ? null : user.getPhone(),
+            user == null ? null : user.getAccountStatus()
         );
     }
 
     @Transactional(readOnly = true)
-    public Member require(Long companyId, Long id) {
-        companies.require(companyId);
+    public Member require(Long id) {
         return repository
-            .findByIdAndCompanyIdAndDeletedAtIsNull(id, companyId)
-            .orElseThrow(() -> ApiException.notFound("Membro não encontrado na empresa"));
+            .findByIdAndDeletedAtIsNull(id)
+            .orElseThrow(() -> ApiException.notFound("Membro não encontrado"));
     }
 
-    public Member requireActive(Long companyId, Long id) {
-        Member member = require(companyId, id);
-        if (member.getStatus() != ActiveStatus.ACTIVE) throw ApiException.conflict("Membro inativo");
-        if (member.getUserId() != null) users.require(companyId, member.getUserId());
+    public Member requireActive(Long id) {
+        Member member = require(id);
+        if (member.getStatus() != ActiveStatus.ACTIVE) {
+            throw ApiException.conflict("Membro inativo");
+        }
+        if (member.getUserId() != null) {
+            users.requireActive(member.getUserId());
+        }
         return member;
     }
 
-    public Member requireHumanActive(Long companyId, Long id) {
-        Member member = requireActive(companyId, id);
-        if (member.getType() != MemberType.HUMAN) throw ApiException.badRequest(
-            "Operação exige membro HUMAN ativo"
-        );
+    public void requireMessageActor(Long userId, Long memberId, Long assignedMemberId) {
+        var user = users.requireActive(userId);
+        if (
+            user.getRole() != com.wxn.chatbot.user.entity.UserRole.ADMIN &&
+            (memberId == null || !java.util.Objects.equals(memberId, assignedMemberId))
+        ) {
+            throw new ApiException(
+                org.springframework.http.HttpStatus.FORBIDDEN,
+                "Atendimento transferido ou acesso revogado"
+            );
+        }
+        if (memberId != null && !java.util.Objects.equals(requireHumanActive(memberId).getUserId(), userId)) {
+            throw new ApiException(org.springframework.http.HttpStatus.FORBIDDEN, "Autoria incompatível");
+        }
+    }
+
+    public Member requireHumanActive(Long id) {
+        Member member = requireActive(id);
+        if (member.getType() != MemberType.HUMAN) {
+            throw ApiException.badRequest("Operação exige membro HUMAN ativo");
+        }
         return member;
     }
 
-    public MemberDtos.Response get(Long companyId, Long id) {
-        return MemberMapper.response(require(companyId, id));
+    public MemberDtos.Response get(Long id) {
+        return response(require(id));
     }
 
     @Transactional(readOnly = true)
-    public List<MemberDtos.Response> list(Long companyId) {
-        companies.require(companyId);
-        return repository
-            .findByCompanyIdAndDeletedAtIsNullOrderById(companyId)
+    public List<MemberDtos.Response> list() {
+        var rows = repository.findByDeletedAtIsNullOrderById();
+        var ids = rows
             .stream()
-            .map(MemberMapper::response)
+            .map(Member::getUserId)
+            .filter(java.util.Objects::nonNull)
+            .collect(java.util.stream.Collectors.toSet());
+        var accounts = users.operationalAccounts(ids);
+        return rows
+            .stream()
+            .map(member -> {
+                var user = member.getUserId() == null ? null : accounts.get(member.getUserId());
+                if (member.getUserId() != null && user == null) {
+                    throw ApiException.notFound("Usuário vinculado ao membro não encontrado");
+                }
+                return MemberMapper.response(
+                    member,
+                    user == null ? null : user.getPhone(),
+                    user == null ? null : user.getAccountStatus()
+                );
+            })
             .toList();
     }
 }

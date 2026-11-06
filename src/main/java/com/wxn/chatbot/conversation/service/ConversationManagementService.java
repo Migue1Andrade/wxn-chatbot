@@ -30,16 +30,50 @@ public class ConversationManagementService {
         this.members = members;
     }
 
-    public NormalizedConversation assume(Long companyId, String id, Action request) {
-        members.requireHumanActive(companyId, request.actorMemberId());
-        Conversation current = conversations.require(companyId, id);
-        requireOpen(current);
+    public NormalizedConversation status(String id, Action request, ConversationStatus target) {
+        members.requireHumanActive(request.actorMemberId());
+        Conversation current = conversations.require(id);
+        if (target == current.operationalStatus()) {
+            return ConversationMapper.response(current);
+        }
         if (
-            Objects.equals(current.getAssignedMemberId(), request.actorMemberId())
-        ) return ConversationMapper.response(current);
-        if (current.getAssignedMemberId() != null) throw ApiException.conflict(
-            "Atendimento já assumido por outro membro"
+            (target == ConversationStatus.IN_PROGRESS || target == ConversationStatus.WAITING_CUSTOMER) &&
+            current.getAssignedMemberId() == null
+        ) {
+            throw ApiException.conflict("Atribua um responsável antes de iniciar o atendimento");
+        }
+        if (target == ConversationStatus.PENDING && current.getAssignedMemberId() != null) {
+            throw ApiException.conflict(
+                "Uma conversa atribuída não pode voltar para triagem sem desatribuição"
+            );
+        }
+        return apply(
+            current,
+            request.expectedVersion(),
+            new ConversationTransition(
+                target,
+                current.getAssignedMemberId(),
+                target == ConversationStatus.CLOSED ? OffsetDateTime.now() : null,
+                target == ConversationStatus.RESOLVED
+                    ? ConversationActivityType.CONVERSATION_RESOLVED
+                    : ConversationActivityType.CONVERSATION_STATUS_CHANGED,
+                request.actorMemberId(),
+                request.reason(),
+                ConversationEventTypes.CONVERSATION_UPDATED
+            )
         );
+    }
+
+    public NormalizedConversation assume(String id, Action request) {
+        members.requireHumanActive(request.actorMemberId());
+        Conversation current = conversations.require(id);
+        requireOpen(current);
+        if (Objects.equals(current.getAssignedMemberId(), request.actorMemberId())) {
+            return ConversationMapper.response(current);
+        }
+        if (current.getAssignedMemberId() != null) {
+            throw ApiException.conflict("Atendimento já assumido por outro membro");
+        }
         return apply(
             current,
             request.expectedVersion(),
@@ -55,14 +89,14 @@ public class ConversationManagementService {
         );
     }
 
-    public NormalizedConversation assign(Long companyId, String id, Assign request) {
-        Conversation current = validateAssignment(companyId, id, request);
-        if (
-            Objects.equals(current.getAssignedMemberId(), request.memberId())
-        ) return ConversationMapper.response(current);
-        if (current.getAssignedMemberId() != null) throw ApiException.conflict(
-            "Conversa já atribuída; utilize transferência"
-        );
+    public NormalizedConversation assign(String id, Assign request) {
+        Conversation current = validateAssignment(id, request);
+        if (Objects.equals(current.getAssignedMemberId(), request.memberId())) {
+            return ConversationMapper.response(current);
+        }
+        if (current.getAssignedMemberId() != null) {
+            throw ApiException.conflict("Conversa já atribuída; utilize transferência");
+        }
         return assignMember(
             current,
             request,
@@ -71,14 +105,14 @@ public class ConversationManagementService {
         );
     }
 
-    public NormalizedConversation transfer(Long companyId, String id, Assign request) {
-        Conversation current = validateAssignment(companyId, id, request);
-        if (
-            Objects.equals(current.getAssignedMemberId(), request.memberId())
-        ) return ConversationMapper.response(current);
-        if (current.getAssignedMemberId() == null) throw ApiException.conflict(
-            "Conversa sem responsável; utilize atribuição"
-        );
+    public NormalizedConversation transfer(String id, Assign request) {
+        Conversation current = validateAssignment(id, request);
+        if (Objects.equals(current.getAssignedMemberId(), request.memberId())) {
+            return ConversationMapper.response(current);
+        }
+        if (current.getAssignedMemberId() == null) {
+            throw ApiException.conflict("Conversa sem responsável; utilize atribuição");
+        }
         return assignMember(
             current,
             request,
@@ -87,10 +121,10 @@ public class ConversationManagementService {
         );
     }
 
-    private Conversation validateAssignment(Long companyId, String id, Assign request) {
-        members.requireActive(companyId, request.actorMemberId());
-        members.requireActive(companyId, request.memberId());
-        Conversation current = conversations.require(companyId, id);
+    private Conversation validateAssignment(String id, Assign request) {
+        members.requireActive(request.actorMemberId());
+        members.requireActive(request.memberId());
+        Conversation current = conversations.require(id);
         requireOpen(current);
         return current;
     }
@@ -116,12 +150,12 @@ public class ConversationManagementService {
         );
     }
 
-    public NormalizedConversation close(Long companyId, String id, Action request) {
-        members.requireActive(companyId, request.actorMemberId());
-        Conversation current = conversations.require(companyId, id);
-        if (current.operationalStatus() == ConversationStatus.CLOSED) return ConversationMapper.response(
-            current
-        );
+    public NormalizedConversation close(String id, Action request) {
+        members.requireActive(request.actorMemberId());
+        Conversation current = conversations.require(id);
+        if (current.operationalStatus() == ConversationStatus.CLOSED) {
+            return ConversationMapper.response(current);
+        }
         return apply(
             current,
             request.expectedVersion(),
@@ -137,12 +171,15 @@ public class ConversationManagementService {
         );
     }
 
-    public NormalizedConversation reopen(Long companyId, String id, Action request) {
-        members.requireActive(companyId, request.actorMemberId());
-        Conversation current = conversations.require(companyId, id);
-        if (current.operationalStatus() != ConversationStatus.CLOSED) return ConversationMapper.response(
-            current
-        );
+    public NormalizedConversation reopen(String id, Action request) {
+        members.requireActive(request.actorMemberId());
+        Conversation current = conversations.require(id);
+        if (
+            current.operationalStatus() != ConversationStatus.CLOSED &&
+            current.operationalStatus() != ConversationStatus.RESOLVED
+        ) {
+            return ConversationMapper.response(current);
+        }
         Long responsible = validResponsible(current);
         return apply(
             current,
@@ -160,22 +197,29 @@ public class ConversationManagementService {
     }
 
     private Long validResponsible(Conversation current) {
-        if (current.getAssignedMemberId() == null) return null;
+        if (current.getAssignedMemberId() == null) {
+            return null;
+        }
         try {
-            return members.requireActive(current.getCompanyId(), current.getAssignedMemberId()).getId();
+            return members.requireActive(current.getAssignedMemberId()).getId();
         } catch (ApiException unavailable) {
             if (
                 unavailable.getStatus() == HttpStatus.NOT_FOUND ||
                 unavailable.getStatus() == HttpStatus.CONFLICT
-            ) return null;
+            ) {
+                return null;
+            }
             throw unavailable;
         }
     }
 
     private void requireOpen(Conversation current) {
-        if (current.operationalStatus() == ConversationStatus.CLOSED) throw ApiException.conflict(
-            "Reabra o atendimento antes de atribuir ou transferir"
-        );
+        if (
+            current.operationalStatus() == ConversationStatus.CLOSED ||
+            current.operationalStatus() == ConversationStatus.RESOLVED
+        ) {
+            throw ApiException.conflict("Reabra o atendimento antes de atribuir ou transferir");
+        }
     }
 
     private NormalizedConversation apply(

@@ -7,7 +7,7 @@ import java.util.List;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/companies/{companyId}/members")
+@RequestMapping("/api/members")
 public class MemberController {
 
     private final MemberService service;
@@ -18,20 +18,17 @@ public class MemberController {
 
     @PostMapping
     @ResponseStatus(org.springframework.http.HttpStatus.CREATED)
-    public MemberDtos.Response create(
-        @PathVariable Long companyId,
-        @Valid @RequestBody MemberDtos.Create request
-    ) {
-        return service.create(companyId, request);
+    public MemberDtos.Response create(@Valid @RequestBody MemberDtos.Create request) {
+        return service.create(request);
     }
 
     @GetMapping
-    public List<MemberDtos.Response> list(@PathVariable Long companyId) {
-        return service.list(companyId);
+    public List<MemberDtos.Response> list() {
+        return service.list();
     }
 
     @GetMapping("/{memberId}")
-    public MemberDtos.Response get(@PathVariable Long companyId, @PathVariable Long memberId) {
-        return service.get(companyId, memberId);
+    public MemberDtos.Response get(@PathVariable Long memberId) {
+        return service.get(memberId);
     }
 }

@@ -1,5 +1,10 @@
 server:
   port: ${BACKEND_PORT:4001}
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
 
 spring:
   application:
@@ -21,13 +26,9 @@ spring:
 wxn:
   dev:
     api-key: ${DEV_API_KEY:}
-    company-id: ${DEV_COMPANY_ID:1}
     frontend-origin: ${FRONTEND_ORIGIN:http://localhost:4002}
-  twilio:
-    company-id: ${TWILIO_COMPANY_ID:0}
-    channel-id: ${TWILIO_CHANNEL_ID:0}
-    channel-key: ${TWILIO_CHANNEL_KEY:}
-    account-sid: ${TWILIO_ACCOUNT_SID:}
-    auth-token: ${TWILIO_AUTH_TOKEN:}
-    phone-number: ${TWILIO_PHONE_NUMBER:}
-    public-base-url: ${TWILIO_PUBLIC_BASE_URL:}
+# Provider URLs contain credentials. Never enable HTTP request tracing for these clients.
+logging:
+  level:
+    org.springframework.web.client: 'OFF'
+    jdk.internal.net.http: 'OFF'

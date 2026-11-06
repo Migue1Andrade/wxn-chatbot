@@ -7,7 +7,6 @@ import java.util.List;
 
 public record NormalizedConversation(
     String id,
-    Long companyId,
     Long channelId,
     ProviderType provider,
     String externalChatId,
@@ -23,7 +22,8 @@ public record NormalizedConversation(
     Instant closedAt,
     long version,
     Long unreadCount,
-    String displayName
+    String displayName,
+    String contactId
 ) implements CanonicalEventPayload {
     @com.fasterxml.jackson.annotation.JsonIgnore
     public String conversationId() {

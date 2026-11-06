@@ -34,7 +34,9 @@ public class SubscriptionReceiptInterceptor implements ExecutorChannelIntercepto
             headers == null ||
             headers.getCommand() != StompCommand.SUBSCRIBE ||
             headers.getReceipt() == null
-        ) return;
+        ) {
+            return;
+        }
         var receipt = StompHeaderAccessor.create(StompCommand.RECEIPT);
         receipt.setSessionId(headers.getSessionId());
         receipt.setReceiptId(headers.getReceipt());

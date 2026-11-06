@@ -6,7 +6,6 @@ import java.util.Map;
 
 public record NormalizedMessage(
     String id,
-    Long companyId,
     Long channelId,
     String conversationId,
     ProviderType provider,
@@ -21,5 +20,20 @@ public record NormalizedMessage(
     boolean simulated,
     String errorCode,
     Instant createdAt,
-    Instant updatedAt
+    Instant updatedAt,
+    String operationId,
+    String replyToMessageId,
+    String replyToExternalMessageId,
+    String replyPreview,
+    String forwardedFromMessageId,
+    String origin,
+    Instant deletedAt,
+    String deletionIntent,
+    String deleteState,
+    Map<String, Object> pendingMutation,
+    String reaction,
+    String contactReaction,
+    Instant editedAt,
+    long version,
+    java.util.Set<MessageCapability> capabilities
 ) implements CanonicalEventPayload {}

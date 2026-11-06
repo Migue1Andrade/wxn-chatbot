@@ -1,4 +1,5 @@
 export const BackendEvents = Object.freeze({
+  ACCESS_REVOKED: 'conversation.access.revoked',
   CONVERSATION_CREATED: 'conversation.created',
   CONVERSATION_UPDATED: 'conversation.updated',
   CONVERSATION_ASSIGNED: 'conversation.assigned',

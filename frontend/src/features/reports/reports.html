@@ -1,0 +1,30 @@
+<div class="flex min-h-screen bg-slate-50 text-slate-800">
+  <management-navigation></management-navigation>
+  <main class="product-page mx-auto w-full max-w-5xl p-6 sm:p-10">
+    <h1 class="mb-3 text-2xl font-semibold">Relatórios</h1>
+    <p class="mb-8 text-sm text-slate-500">Exporte registros reais da operação para análise.</p>
+    <error-state
+      ng-if="vm.error"
+      message="{{vm.error}}"
+      on-retry="vm.export()"
+    ></error-state>
+    <section class="rounded-xl border border-slate-200 bg-white p-6">
+      <h2 class="mb-3 text-sm font-semibold">Atendimentos · histórico completo</h2>
+      <p class="mb-5 text-sm leading-6 text-slate-500">
+        CSV com protocolo, cliente, status, prioridade, responsável, canal, abertura, resolução e situação
+        atual do SLA. A exportação é paginada no servidor e pode levar alguns segundos.
+      </p>
+      <button
+        ng-disabled="vm.busy"
+        ng-click="vm.export()"
+        class="rounded-lg bg-teal-700 px-4 py-2 text-sm text-white"
+      >
+        {{vm.busy ? 'Preparando arquivo…' : 'Exportar CSV'}}
+      </button>
+      <p class="mt-5 text-xs text-slate-400">
+        O relatório reflete os dados consultados durante a exportação. A operação continua recebendo
+        atualizações enquanto o arquivo é gerado.
+      </p>
+    </section>
+  </main>
+</div>

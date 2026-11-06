@@ -1,1 +1,36 @@
-{}
+{
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@prettier/plugin-xml": "3.4.2",
+    "eslint": "10.13.0",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "17.13.0",
+    "prettier": "3.9.10",
+    "prettier-plugin-java": "2.11.0"
+  },
+  "name": "wxn-chatbot",
+  "private": true,
+  "description": "Ferramentas compartilhadas de qualidade do projeto WXN Chatbot",
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint:js": "eslint . --max-warnings=0",
+    "lint:shell": "bash -c 'for file in scripts/*.sh; do bash -n \"$file\" || exit 1; done'",
+    "lint": "npm run format:check && npm run lint:js && npm run lint:java && npm run lint:shell",
+    "lint:fix": "npm run lint:js -- --fix && npm run format",
+    "check": "npm run lint && npm --prefix frontend test && npm --prefix frontend run build",
+    "lint:java": "mvn checkstyle:check",
+    "build": "npm --prefix frontend run build",
+    "seed:demo": "node scripts/seed-demo.mjs",
+    "dev:infra": "bash scripts/dev-infra.sh",
+    "dev:compose": "bash scripts/dev-compose.sh",
+    "dev:backend": "bash scripts/dev-backend.sh",
+    "dev:frontend": "bash scripts/dev-frontend.sh",
+    "dev:ngrok": "bash scripts/dev-ngrok.sh",
+    "dev:check-evolution": "bash scripts/check-evolution.sh",
+    "seed:presentation": "bash scripts/seed-presentation.sh"
+  },
+  "engines": {
+    "node": ">=22.23.2"
+  }
+}

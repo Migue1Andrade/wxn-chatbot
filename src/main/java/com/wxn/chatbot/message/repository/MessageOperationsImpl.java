@@ -18,15 +18,16 @@ public class MessageOperationsImpl implements MessageOperations {
         this.mongo = mongo;
     }
 
-    public List<Message> before(
-        Long companyId,
-        org.bson.types.ObjectId conversationId,
-        MessageCursor cursor,
-        int limit
-    ) {
-        Query query = Query.query(
-            Criteria.where("companyId").is(companyId).and("conversationId").is(conversationId)
+    public void reconciliationChecked(Message message) {
+        mongo.updateFirst(
+            scope(message),
+            new Update().set("lastReconciledAt", OffsetDateTime.now()),
+            Message.class
         );
+    }
+
+    public List<Message> before(org.bson.types.ObjectId conversationId, MessageCursor cursor, int limit) {
+        Query query = Query.query(Criteria.where("conversationId").is(conversationId));
         if (cursor != null) {
             var equalTime = cursor.timestamp().toInstant().equals(Instant.EPOCH)
                 ? new Criteria().orOperator(
@@ -69,7 +70,7 @@ public class MessageOperationsImpl implements MessageOperations {
     public void associateExternalId(Message message, String externalId, boolean simulated) {
         mongo.updateFirst(
             scope(message),
-            new Update().set("externalMessageId", externalId).set("simulated", simulated),
+            new Update().inc("version", 1).set("externalMessageId", externalId).set("simulated", simulated),
             Message.class
         );
     }
@@ -85,6 +86,7 @@ public class MessageOperationsImpl implements MessageOperations {
             mongo.findAndModify(
                 query,
                 new Update()
+                    .inc("version", 1)
                     .set("status", status)
                     .set("errorCode", errorCode)
                     .set("updatedAt", OffsetDateTime.now()),
@@ -94,12 +96,60 @@ public class MessageOperationsImpl implements MessageOperations {
         );
     }
 
+    public void providerIds(Message message, String trackingId, String responseId) {
+        mongo.updateFirst(
+            scope(message),
+            new Update()
+                .inc("version", 1)
+                .set("providerTrackingId", trackingId)
+                .set("providerResponseId", responseId),
+            Message.class
+        );
+    }
+
+    public boolean claimDeletion(Message message, String operationId, String intent, Long userId) {
+        return (
+            mongo
+                .updateFirst(
+                    scope(message).addCriteria(
+                        Criteria.where("deleteState")
+                            .in(java.util.Arrays.asList(null, "FAILED"))
+                            .and("pendingMutation.state")
+                            .nin("PENDING", "ACCEPTED", "UNKNOWN")
+                    ),
+                    new Update()
+                        .inc("version", 1)
+                        .set("deleteState", "PENDING")
+                        .set("deleteOperationId", operationId)
+                        .set("deletionIntent", intent)
+                        .set("deletedByUserId", userId),
+                    Message.class
+                )
+                .getModifiedCount() == 1
+        );
+    }
+
+    public Message finishDeletion(Message message, String state) {
+        Update update = new Update()
+            .inc("version", 1)
+            .set("deleteState", state)
+            .set("updatedAt", OffsetDateTime.now());
+        if ("CONFIRMED".equals(state)) {
+            update.set("deletedAt", OffsetDateTime.now());
+        }
+        return mongo.findAndModify(
+            scope(message),
+            update,
+            FindAndModifyOptions.options().returnNew(true),
+            Message.class
+        );
+    }
+
     private Query scope(Message message) {
         return Query.query(
             Criteria.where("_id")
                 .is(message.getId())
-                .and("companyId")
-                .is(message.getCompanyId())
+
                 .and("channelId")
                 .is(message.getChannelId())
         );
