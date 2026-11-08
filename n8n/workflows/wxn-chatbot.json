@@ -1,0 +1,71 @@
+{
+  "name": "wxn-chatbot",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chat",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "254f3011-1030-430b-ba10-1c4267829111",
+      "name": "Webhook",
+      "webhookId": "dab141ea-8f07-442b-b25f-12f9ff12c685",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "tOSeSfuJtOmPPccF",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"reply\": \"Ainda estou sendo configurado. Vou encaminhar seu atendimento.\",\n  \"intent\": \"humano\",\n  \"needsHuman\": true\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        176,
+        0
+      ],
+      "id": "6eb6b7a9-872d-4ef3-8909-a7413440fa46",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a55fac0b-0173-4281-a9e9-ee6172109c33",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0895067a3b416cec044d21a2dfce4df1e7ba1f40c0dc58b5ed12c6ed92c61030"
+  },
+  "nodeGroups": [],
+  "id": "gCnG8aGWAYFhyBss",
+  "tags": []
+}

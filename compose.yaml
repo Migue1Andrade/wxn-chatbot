@@ -161,6 +161,22 @@ services:
       timeout: 5s
       retries: 12
 
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    profiles: ['bot']
+    restart: unless-stopped
+    ports:
+      - '5678:5678'
+    environment:
+      GENERIC_TIMEZONE: America/Recife
+      TZ: America/Recife
+      N8N_RUNNERS_ENABLED: 'true'
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: 'true'
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-}
+      WEBHOOK_URL: http://localhost:5678/
+    volumes:
+      - n8n_data:/home/node/.n8n
+
 volumes:
   postgres_data:
     name: ${POSTGRES_VOLUME:-wxn-chatbot_postgres_data}
@@ -174,3 +190,5 @@ volumes:
     name: ${EVOLUTION_REDIS_VOLUME:-wxn-chatbot_evolution_redis_data}
   evolution_instances:
     name: ${EVOLUTION_INSTANCES_VOLUME:-wxn-chatbot_evolution_instances}
+  n8n_data:
+    name: ${N8N_VOLUME:-wxn-chatbot_n8n_data}

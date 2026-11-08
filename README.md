@@ -19,6 +19,18 @@ Portas: backend 4001, frontend 4002, PostgreSQL 4003 e MongoDB 4004. Vite lê `.
 o backend recebe as variáveis exportadas. `SPRING_PROFILES_ACTIVE=dev` habilita a API interna e Mock;
 ativar `prod` bloqueia esses controles de desenvolvimento. O cadastro e o login por sessão são descritos em [contas de usuário](docs/user-accounts.md).
 
+## Bot com n8n
+
+O n8n local é iniciado pelo serviço do perfil `bot` e fica disponível em
+`http://localhost:5678`. O estado atual, o contrato do webhook, os testes e o
+procedimento de exportação estão documentados em [Bot com n8n](docs/n8n-bot.md).
+
+```bash
+docker compose up -d n8n
+```
+
+Não versione `.env`, credenciais do n8n ou chaves de webhook.
+
 ## Bancos e migrations
 
 V1 cria `users` e `members`, V2 cria `departments` e `member_departments`, V3 cria
