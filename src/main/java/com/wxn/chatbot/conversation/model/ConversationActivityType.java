@@ -11,4 +11,5 @@ public enum ConversationActivityType {
     CONVERSATION_CLOSED,
     CONVERSATION_REOPENED,
     CONVERSATION_AUTO_REOPENED,
+    BOT_HANDOFF,
 }

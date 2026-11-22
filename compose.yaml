@@ -58,6 +58,10 @@ services:
       EVOLUTION_WEBHOOK_SECRET: ${EVOLUTION_WEBHOOK_SECRET:?Defina EVOLUTION_WEBHOOK_SECRET no ambiente ou .env}
       EVOLUTION_ALLOW_HTTP: 'true'
       WXN_BOOTSTRAP_TOKEN: ${WXN_BOOTSTRAP_TOKEN:?Defina WXN_BOOTSTRAP_TOKEN no ambiente ou .env}
+      BOT_ENABLED: ${BOT_ENABLED:-false}
+      BOT_SERVICE_URL: http://bot:8000
+      BOT_API_KEY: ${BOT_API_KEY:-}
+      BOT_MEMBER_ID: ${BOT_MEMBER_ID:-}
     healthcheck:
       test:
         [
@@ -161,21 +165,74 @@ services:
       timeout: 5s
       retries: 12
 
-  n8n:
-    image: docker.n8n.io/n8nio/n8n
-    profiles: ['bot']
+  # Banco vetorial exclusivo do bot (pgvector). Porta só no localhost, para inspeção e testes locais.
+  bot-db:
+    image: pgvector/pgvector:pg17
+    profiles: ['ai']
     restart: unless-stopped
     ports:
-      - '5678:5678'
+      - '127.0.0.1:${BOT_DB_PORT:-4006}:5432'
     environment:
-      GENERIC_TIMEZONE: America/Recife
-      TZ: America/Recife
-      N8N_RUNNERS_ENABLED: 'true'
-      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: 'true'
-      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-}
-      WEBHOOK_URL: http://localhost:5678/
+      POSTGRES_DB: bot
+      POSTGRES_USER: bot
+      POSTGRES_PASSWORD: ${BOT_DB_PASSWORD:-}
     volumes:
-      - n8n_data:/home/node/.n8n
+      - bot_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U bot -d bot']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Aplica as migrations de bot/migrations e termina; o bot só sobe depois que ele conclui.
+  bot-db-migrate:
+    image: flyway/flyway:11-alpine
+    profiles: ['ai']
+    command: migrate
+    environment:
+      FLYWAY_URL: jdbc:postgresql://bot-db:5432/bot
+      FLYWAY_USER: bot
+      FLYWAY_PASSWORD: ${BOT_DB_PASSWORD:-}
+      FLYWAY_LOCATIONS: filesystem:/flyway/sql
+    volumes:
+      - ./bot/migrations:/flyway/sql:ro
+    depends_on:
+      bot-db:
+        condition: service_healthy
+
+  bot:
+    build:
+      context: ./bot
+    profiles: ['ai']
+    restart: unless-stopped
+    depends_on:
+      bot-db-migrate:
+        condition: service_completed_successfully
+    ports:
+      - '${BOT_PORT:-4005}:8000'
+    volumes:
+      # Documentos editáveis sem rebuild; reprocesse com `python -m wxn_bot.knowledge_cli ingest`.
+      - ./bot/knowledge:/app/knowledge:ro
+    environment:
+      BOT_API_KEY: ${BOT_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      BOT_MODEL: ${BOT_MODEL:-}
+      BOT_HISTORY_MAX_TOKENS: ${BOT_HISTORY_MAX_TOKENS:-4000}
+      BOT_FALLBACK_MODEL: ${BOT_FALLBACK_MODEL:-}
+      BOT_MAX_INPUT_CHARS: ${BOT_MAX_INPUT_CHARS:-2000}
+      BOT_MAX_TOOL_STEPS: ${BOT_MAX_TOOL_STEPS:-3}
+      BOT_DATABASE_URL: postgresql://bot:${BOT_DB_PASSWORD:-}@bot-db:5432/bot
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'python',
+          '-c',
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
 volumes:
   postgres_data:
@@ -190,5 +247,5 @@ volumes:
     name: ${EVOLUTION_REDIS_VOLUME:-wxn-chatbot_evolution_redis_data}
   evolution_instances:
     name: ${EVOLUTION_INSTANCES_VOLUME:-wxn-chatbot_evolution_instances}
-  n8n_data:
-    name: ${N8N_VOLUME:-wxn-chatbot_n8n_data}
+  bot_db_data:
+    name: ${BOT_DB_VOLUME:-wxn-chatbot_bot_db_data}

@@ -3,7 +3,9 @@ package com.wxn.chatbot.conversation.service;
 import com.wxn.chatbot.common.ApiException;
 import com.wxn.chatbot.conversation.document.Conversation;
 import com.wxn.chatbot.conversation.event.ConversationEventPublisher;
+import com.wxn.chatbot.conversation.event.ConversationEventTypes;
 import com.wxn.chatbot.conversation.mapper.ConversationMapper;
+import com.wxn.chatbot.conversation.model.ConversationActivityType;
 import com.wxn.chatbot.conversation.model.ConversationTransition;
 import com.wxn.chatbot.conversation.repository.ConversationRepository;
 import java.time.OffsetDateTime;
@@ -60,22 +62,51 @@ public class ConversationTransitionService {
                 activity
             )
         );
-        updated.ifPresent(conversation -> {
-            activities.flush(conversation);
-            if (
-                current.getAssignedMemberId() != null &&
-                !java.util.Objects.equals(current.getAssignedMemberId(), conversation.getAssignedMemberId())
-            ) {
-                events.publish(
-                    com.wxn.chatbot.conversation.event.ConversationEventTypes.ACCESS_REVOKED,
-                    new com.wxn.chatbot.conversation.event.AccessRevoked(
-                        current.getId().toHexString(),
-                        current.getAssignedMemberId()
-                    )
-                );
-            }
-            events.publish(transition.eventType(), ConversationMapper.response(conversation));
-        });
+        updated.ifPresent(conversation -> published(current, conversation, transition.eventType()));
         return updated;
+    }
+
+    /** Devolve a conversa à fila de atendimento, opcionalmente com setor, e inicia a espera por um atendente. */
+    public Optional<Conversation> returnToQueue(
+        Conversation current,
+        long expectedVersion,
+        Long departmentId,
+        ConversationActivityType activityType,
+        Long actorMemberId,
+        String reason
+    ) {
+        var activity = activities.prepare(
+            current,
+            activityType,
+            actorMemberId,
+            null,
+            reason,
+            expectedVersion + 1,
+            OffsetDateTime.now()
+        );
+        var updated = writes.execute(current.getId().toHexString(), () ->
+            repository.returnToQueue(current, expectedVersion, departmentId, activity)
+        );
+        updated.ifPresent(conversation ->
+            published(current, conversation, ConversationEventTypes.CONVERSATION_UPDATED)
+        );
+        return updated;
+    }
+
+    private void published(Conversation current, Conversation conversation, String eventType) {
+        activities.flush(conversation);
+        if (
+            current.getAssignedMemberId() != null &&
+            !java.util.Objects.equals(current.getAssignedMemberId(), conversation.getAssignedMemberId())
+        ) {
+            events.publish(
+                ConversationEventTypes.ACCESS_REVOKED,
+                new com.wxn.chatbot.conversation.event.AccessRevoked(
+                    current.getId().toHexString(),
+                    current.getAssignedMemberId()
+                )
+            );
+        }
+        events.publish(eventType, ConversationMapper.response(conversation));
     }
 }

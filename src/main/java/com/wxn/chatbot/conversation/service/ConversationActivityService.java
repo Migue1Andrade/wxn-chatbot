@@ -30,6 +30,18 @@ public class ConversationActivityService {
         this.conversations = conversations;
     }
 
+    public boolean recordedSince(
+        Conversation conversation,
+        ConversationActivityType event,
+        OffsetDateTime since
+    ) {
+        return repository.existsByConversationIdAndEventAndCreatedAtGreaterThanEqual(
+            conversation.getId(),
+            event,
+            since
+        );
+    }
+
     public ConversationActivity prepare(
         Conversation conversation,
         ConversationActivityType event,

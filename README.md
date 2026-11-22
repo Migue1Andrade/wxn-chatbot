@@ -19,17 +19,17 @@ Portas: backend 4001, frontend 4002, PostgreSQL 4003 e MongoDB 4004. Vite lê `.
 o backend recebe as variáveis exportadas. `SPRING_PROFILES_ACTIVE=dev` habilita a API interna e Mock;
 ativar `prod` bloqueia esses controles de desenvolvimento. O cadastro e o login por sessão são descritos em [contas de usuário](docs/user-accounts.md).
 
-## Bot com n8n
+## Bot de atendimento (IA)
 
-O n8n local é iniciado pelo serviço do perfil `bot` e fica disponível em
-`http://localhost:5678`. O estado atual, o contrato do webhook, os testes e o
-procedimento de exportação estão documentados em [Bot com n8n](docs/n8n-bot.md).
+O bot é um serviço Python em `bot/`, chamado pelo backend por HTTP, e usa o Claude pela API da Anthropic. Ele
+sobe pelo perfil `ai` do Docker Compose e só atende quando `BOT_ENABLED=true`. Configuração, contrato, teste
+manual pelo simulador do canal MOCK e registros em `bot_runs` estão em [bot/README.md](bot/README.md).
 
 ```bash
-docker compose up -d n8n
+docker compose --profile ai up -d --build
 ```
 
-Não versione `.env`, credenciais do n8n ou chaves de webhook.
+Não versione `.env` nem as chaves `BOT_API_KEY` e `ANTHROPIC_API_KEY`.
 
 ## Bancos e migrations
 

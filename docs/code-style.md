@@ -4,24 +4,28 @@ Este documento define o padrão do projeto para pessoas e agentes. As regras arq
 
 ## Ferramentas e comandos
 
-As ferramentas de desenvolvimento ficam no `package.json` da raiz e suas versões exatas no lockfile. O lint Java exige JDK 21 e Maven. O frontend mantém suas dependências em `frontend/`. Use Node 22.23.2 ou mais recente; `.nvmrc` registra a versão de referência.
+As ferramentas de desenvolvimento ficam no `package.json` da raiz e suas versões exatas no lockfile. O lint Java exige JDK 21 e Maven. O lint Python exige o [uv](https://docs.astral.sh/uv/), que instala a versão de Python e as dependências travadas em `bot/uv.lock`. O frontend mantém suas dependências em `frontend/`. Use Node 22.23.2 ou mais recente; `.nvmrc` registra a versão de referência.
 
 ```bash
 nvm use
 npm ci
 npm --prefix frontend ci
+uv --directory bot sync
 ```
 
-| Comando na raiz        | Efeito                                                                         |
-| ---------------------- | ------------------------------------------------------------------------------ |
-| `npm run format`       | Formata os arquivos suportados pelo Prettier                                   |
-| `npm run format:check` | Verifica a formatação sem gravar arquivos                                      |
-| `npm run lint:js`      | Verifica JavaScript da aplicação, testes, scripts e configurações              |
-| `npm run lint:java`    | Verifica chaves, instruções por linha e whitespace Java com Checkstyle         |
-| `npm run lint:shell`   | Verifica a sintaxe dos scripts Bash                                            |
-| `npm run lint:fix`     | Aplica correções seguras do ESLint e executa o formatador                      |
-| `npm run lint`         | Verifica formatação, JavaScript, Java e sintaxe Bash; falha em erros ou avisos |
-| `npm run check`        | Executa lint, testes do frontend e build Vite                                  |
+| Comando na raiz         | Efeito                                                                                 |
+| ----------------------- | -------------------------------------------------------------------------------------- |
+| `npm run format`        | Formata os arquivos suportados pelo Prettier                                           |
+| `npm run format:check`  | Verifica a formatação sem gravar arquivos                                              |
+| `npm run lint:js`       | Verifica JavaScript da aplicação, testes, scripts e configurações                      |
+| `npm run lint:java`     | Verifica chaves, instruções por linha e whitespace Java com Checkstyle                 |
+| `npm run lint:python`   | Verifica formatação e regras do Python do bot com Ruff                                 |
+| `npm run format:python` | Formata o Python do bot e aplica correções seguras do Ruff                             |
+| `npm run test:python`   | Executa os testes do bot com pytest                                                    |
+| `npm run lint:shell`    | Verifica a sintaxe dos scripts Bash                                                    |
+| `npm run lint:fix`      | Aplica correções seguras do ESLint e do Ruff e executa os formatadores                 |
+| `npm run lint`          | Verifica formatação, JavaScript, Java, Python e sintaxe Bash; falha em erros ou avisos |
+| `npm run check`         | Executa lint, testes do bot e do frontend e build Vite                                 |
 
 O formatador não corrige todas as violações: por exemplo, chaves ausentes em Java apontadas pelo Checkstyle devem ser adicionadas ao código antes de repetir a verificação.
 
@@ -70,6 +74,16 @@ O ESLint aplica as regras recomendadas e as regras locais em `eslint.config.mjs`
 - Evite abstrações, dependências e métodos genéricos sem necessidade concreta.
 - O Prettier verifica a apresentação Java. O Checkstyle (`config/checkstyle.xml`) exige chaves nos condicionais/laços, uma instrução por linha e arquivos sem tabs. A checagem inclui código de produção e testes, e executa na fase `validate` do Maven. Compilação, testes e revisão continuam necessários para validar comportamento e arquitetura.
 
+## Python (serviço do bot)
+
+- 4 espaços por nível, largura de 110 caracteres e aspas duplas, aplicados pelo `ruff format`.
+- `snake_case` para funções, variáveis e módulos; `PascalCase` para classes; `UPPER_SNAKE_CASE` para constantes.
+- Anote tipos em funções públicas. Valide entrada e saída HTTP com modelos Pydantic.
+- O contrato HTTP usa `camelCase` no JSON e `snake_case` no código; a conversão fica nos modelos do contrato.
+- O serviço não acessa os bancos do backend: recebe o necessário na requisição e devolve uma decisão.
+- Testes não chamam a API do modelo; substitua o modelo por um falso por injeção de dependência.
+- Dependências são adicionadas com `uv add` e ficam travadas em `bot/uv.lock`.
+
 ## HTML, CSS e configuração
 
 - Mantenha templates HTML em arquivos separados dos controllers.
@@ -93,6 +107,6 @@ Para uma nova migration, escreva SQL legível com indentação de 4 espaços, um
 4. Confira `git diff --check`, o diff e os arquivos novos.
 5. Não crie commit nem faça push sem solicitação explícita.
 
-O workflow `.github/workflows/lint.yml` prepara Node e Java 21, executa `npm ci` e `npm run lint` em pushes e pull requests. Ele não corrige arquivos nem cria commits. A exigência de aprovação desse check para merge depende da configuração de proteção de branches no GitHub.
+O workflow `.github/workflows/lint.yml` prepara Node, Java 21 e uv, executa `npm ci` e `npm run lint` em pushes e pull requests. Ele não corrige arquivos nem cria commits. A exigência de aprovação desse check para merge depende da configuração de proteção de branches no GitHub.
 
 O Prettier e o ESLint tornam a apresentação e certas regras de qualidade verificáveis. Nomes claros, responsabilidades, arquitetura, duplicação e correção das regras de negócio continuam exigindo revisão humana ou do agente.

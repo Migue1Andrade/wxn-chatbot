@@ -4,7 +4,7 @@ import globals from 'globals';
 
 export default [
   {
-    ignores: ['**/node_modules/**', '**/dist/**', '**/target/**'],
+    ignores: ['**/node_modules/**', '**/dist/**', '**/target/**', '**/.venv/**'],
   },
   prettier,
   {

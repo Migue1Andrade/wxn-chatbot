@@ -31,6 +31,12 @@ public interface ConversationOperations {
         OffsetDateTime closedAt,
         ConversationActivity activity
     );
+    Optional<Conversation> returnToQueue(
+        Conversation current,
+        long expectedVersion,
+        Long departmentId,
+        ConversationActivity activity
+    );
     void acknowledgeActivity(ObjectId id, ObjectId activityId);
     List<Conversation> search(
         ConversationStatus status,

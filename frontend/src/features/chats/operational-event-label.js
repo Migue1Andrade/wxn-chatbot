@@ -22,6 +22,8 @@ export function operationalEventLabel(event, memberName) {
       return 'Atendimento reaberto por ' + memberName(event.actorMemberId);
     case 'CONVERSATION_AUTO_REOPENED':
       return 'Reaberto automaticamente por nova mensagem';
+    case 'BOT_HANDOFF':
+      return 'Encaminhado pelo bot para a fila de atendimento';
     default:
       return 'Atendimento atualizado';
   }

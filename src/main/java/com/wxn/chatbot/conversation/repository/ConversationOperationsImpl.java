@@ -196,6 +196,39 @@ public class ConversationOperationsImpl implements ConversationOperations {
         );
     }
 
+    // Devolve a conversa à fila: pendente, sem responsável e aguardando atendente desde agora (início do SLA).
+    public Optional<Conversation> returnToQueue(
+        Conversation current,
+        long expectedVersion,
+        Long departmentId,
+        ConversationActivity activity
+    ) {
+        Query query = scope(current.getId());
+        query.addCriteria(Criteria.where("version").is(expectedVersion));
+        Update update = new Update()
+            .set("status", ConversationStatus.PENDING.name())
+            .set("assignedMemberId", null)
+            .set("waitingForAgentSince", activity.getCreatedAt())
+            .set("lastStatusChangedAt", activity.getCreatedAt())
+            .max("updatedAt", activity.getCreatedAt())
+            .set("version", expectedVersion + 1)
+            .push("pendingActivities", activity);
+        if (current.getAssignedMemberId() != null) {
+            update.set("assignedAt", activity.getCreatedAt());
+        }
+        if (departmentId != null) {
+            update.set("departmentId", departmentId);
+        }
+        return Optional.ofNullable(
+            mongo.findAndModify(
+                query,
+                update,
+                FindAndModifyOptions.options().returnNew(true),
+                Conversation.class
+            )
+        );
+    }
+
     public void acknowledgeActivity(ObjectId id, ObjectId activityId) {
         mongo.updateFirst(
             scope(id),

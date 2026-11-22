@@ -6,3 +6,9 @@ target/
 node_modules/
 frontend/dist/
 frontend/.env.local
+
+.venv/
+__pycache__/
+.models/
+.pytest_cache/
+.ruff_cache/
