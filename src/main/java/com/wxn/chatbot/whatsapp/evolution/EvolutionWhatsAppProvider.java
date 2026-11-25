@@ -35,6 +35,10 @@ public class EvolutionWhatsAppProvider implements WhatsAppProvider {
     public Set<MessageCapability> messageCapabilities() {
         return Set.of(
             MessageCapability.SEND_TEXT,
+            MessageCapability.REPLY_TEXT,
+            MessageCapability.FORWARD_TEXT,
+            MessageCapability.DELETE_FOR_EVERYONE,
+            MessageCapability.EDIT_TEXT,
             MessageCapability.CONNECTION_STATUS,
             MessageCapability.CONFIGURE_WEBHOOKS,
             MessageCapability.MESSAGE_STATUS
@@ -107,6 +111,68 @@ public class EvolutionWhatsAppProvider implements WhatsAppProvider {
             result.path("key").path("id").asText(null),
             null
         );
+    }
+
+    @Override
+    public SendMessageResult reply(
+        WhatsAppChannel channel,
+        SendMessageRequest request,
+        String externalMessageId,
+        String quotedText
+    ) {
+        requireChannel(channel);
+        if (!connection(channel).available()) {
+            throw new ProviderSendException("CHANNEL_DISCONNECTED");
+        }
+        JsonNode result = client.sendText(
+            request.recipientPhone(),
+            request.content(),
+            externalMessageId,
+            quotedText
+        );
+        return result(result);
+    }
+
+    @Override
+    public SendMessageResult forward(WhatsAppChannel channel, ForwardMessageRequest request) {
+        // Evolution 2.3.7 exposes no reliable native-forward endpoint. This is an explicit text copy.
+        return send(channel, request.destination());
+    }
+
+    @Override
+    public void delete(WhatsAppChannel channel, DeleteMessageRequest request) {
+        requireChannel(channel);
+        if (request.intent() != DeleteMessageRequest.DeleteIntent.DELETE_FOR_EVERYONE) {
+            throw ApiException.conflict("Evolution não suporta apagar somente para mim");
+        }
+        client.deleteMessage(request.phone(), request.externalMessageId(), request.owner());
+    }
+
+    @Override
+    public String mutate(
+        WhatsAppChannel channel,
+        String operation,
+        String phone,
+        String externalId,
+        String value
+    ) {
+        requireChannel(channel);
+        if (!connection(channel).available()) {
+            throw new ProviderSendException("CHANNEL_DISCONNECTED");
+        }
+        if (!"EDIT_TEXT".equals(operation)) {
+            throw ApiException.conflict("Operação não suportada pela Evolution");
+        }
+        client.updateMessage(phone, externalId, value);
+        return "ACCEPTED";
+    }
+
+    private SendMessageResult result(JsonNode result) {
+        String id = result.path("key").path("id").asText(null);
+        if (id == null || id.isBlank()) {
+            throw new ProviderSendException("EVOLUTION_CONFIRMATION_UNKNOWN");
+        }
+        return new SendMessageResult(id, NormalizedMessageStatus.ACCEPTED, false, id, null);
     }
 
     @Override

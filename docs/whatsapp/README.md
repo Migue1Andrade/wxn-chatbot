@@ -129,6 +129,8 @@ Consultados em 31/10/2026; verificação local não equivale a conta real homolo
 
 ```bash
 npm run lint
+npm run build
+npm run test
 mvn -DskipTests package
 npm run build
 git diff --check

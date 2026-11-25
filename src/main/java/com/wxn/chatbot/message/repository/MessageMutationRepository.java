@@ -151,4 +151,48 @@ public class MessageMutationRepository {
             Message.class
         );
     }
+
+    public java.util.List<Message> expirePending(Instant before) {
+        java.util.Date cutoff = java.util.Date.from(before);
+        Query stale = Query.query(
+            Criteria.where("pendingMutation.state")
+                .in("PENDING", "ACCEPTED", "UNKNOWN")
+                .and("pendingMutation.requestedAt")
+                .lt(cutoff)
+        );
+        var expired = new java.util.ArrayList<Message>();
+        for (Message message : mongo.find(stale, Message.class)) {
+            Message updated = mongo.findAndModify(
+                Query.query(
+                    Criteria.where("_id")
+                        .is(message.getId())
+                        .and("pendingMutation.state")
+                        .in("PENDING", "ACCEPTED", "UNKNOWN")
+                        .and("pendingMutation.requestedAt")
+                        .lt(cutoff)
+                ),
+                new Update()
+                    .inc("version", 1)
+                    .set("pendingMutation.state", "TIMEOUT")
+                    .set("updatedAt", OffsetDateTime.now()),
+                FindAndModifyOptions.options().returnNew(true),
+                Message.class
+            );
+            if (updated != null) {
+                expired.add(updated);
+                String operationId = updated.getPendingMutation().getString("operationId");
+                mongo.updateFirst(
+                    Query.query(
+                        Criteria.where("channelId")
+                            .is(updated.getChannelId())
+                            .and("operationId")
+                            .is(operationId)
+                    ),
+                    new Update().set("outcome", "TIMEOUT").set("updatedAt", new java.util.Date()),
+                    "message_operations"
+                );
+            }
+        }
+        return expired;
+    }
 }

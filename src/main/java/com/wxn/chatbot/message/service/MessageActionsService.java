@@ -296,9 +296,13 @@ public class MessageActionsService {
             );
             return MessageMapper.response(message, providers.messageCapabilities(message.getProvider()));
         }
-        message = repository.finishDeletion(message, "CONFIRMED");
+        String state = provider.type() == ProviderType.EVOLUTION ? "ACCEPTED" : "CONFIRMED";
+        message = repository.finishDeletion(message, state);
         conversations.refreshPreview(message);
-        logs.record(message, MessageLogEvent.DELETE_CONFIRMED);
+        logs.record(
+            message,
+            "ACCEPTED".equals(state) ? MessageLogEvent.DELETE_ACCEPTED : MessageLogEvent.DELETE_CONFIRMED
+        );
         events.publish(
             ConversationEventTypes.MESSAGE_STATUS_UPDATED,
             MessageMapper.response(message, providers.messageCapabilities(message.getProvider()))

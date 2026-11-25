@@ -26,6 +26,15 @@ public interface WhatsAppProvider {
         throw com.wxn.chatbot.common.ApiException.conflict("Provider não suporta resposta citada");
     }
 
+    default SendMessageResult reply(
+        WhatsAppChannel channel,
+        SendMessageRequest request,
+        String externalMessageId,
+        String quotedText
+    ) {
+        return reply(channel, request, externalMessageId);
+    }
+
     default SendMessageResult forward(WhatsAppChannel channel, ForwardMessageRequest request) {
         throw com.wxn.chatbot.common.ApiException.conflict("Provider não suporta encaminhamento");
     }

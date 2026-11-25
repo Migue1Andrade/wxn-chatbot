@@ -13,6 +13,7 @@ angular.module('wxn.chats').directive('chatHeader', function () {
       channels: '<',
       actor: '<',
       onBack: '&',
+      onTeam: '&',
     },
     controller: 'ConversationActionsController',
     controllerAs: '$ctrl',

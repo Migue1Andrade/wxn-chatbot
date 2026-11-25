@@ -3,6 +3,7 @@ package com.wxn.chatbot.auth.config;
 import com.wxn.chatbot.auth.service.AccountSessions;
 import com.wxn.chatbot.common.ApiException;
 import com.wxn.chatbot.config.DevelopmentAccess;
+import com.wxn.chatbot.config.FrontendOrigins;
 import com.wxn.chatbot.user.entity.UserRole;
 import jakarta.servlet.http.*;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,7 +40,7 @@ public class AccountAccessInterceptor implements HandlerInterceptor {
             if ("GET".equals(request.getMethod()) || "HEAD".equals(request.getMethod())) {
                 return true;
             }
-            if (request.getHeader("Origin") != null && !origin.equals(request.getHeader("Origin"))) {
+            if (!FrontendOrigins.allowed(origin, request.getHeader("Origin"))) {
                 throw new ApiException(HttpStatus.FORBIDDEN, "Origem não permitida");
             }
             return true;
@@ -61,7 +62,7 @@ public class AccountAccessInterceptor implements HandlerInterceptor {
         }
         boolean write = !"GET".equals(request.getMethod()) && !"HEAD".equals(request.getMethod());
         if (write) {
-            if (request.getHeader("Origin") != null && !origin.equals(request.getHeader("Origin"))) {
+            if (!FrontendOrigins.allowed(origin, request.getHeader("Origin"))) {
                 throw new ApiException(HttpStatus.FORBIDDEN, "Origem não permitida");
             }
             sessions.csrf(request);

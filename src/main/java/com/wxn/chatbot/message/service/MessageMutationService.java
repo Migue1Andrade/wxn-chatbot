@@ -229,4 +229,11 @@ public class MessageMutationService {
         conversations.refreshPreview(message);
         events.publish(ConversationEventTypes.MESSAGE_STATUS_UPDATED, response(message));
     }
+
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 30_000)
+    public void expireUnconfirmed() {
+        for (Message message : operations.expirePending(Instant.now().minusSeconds(120))) {
+            publish(message);
+        }
+    }
 }

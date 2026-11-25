@@ -18,12 +18,18 @@
       aria-expanded="{{$ctrl.showMenu}}"
       ng-click="$ctrl.openMenu($event)"
     >
-      ⌄
+      <svg
+        viewBox="0 0 20 20"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path d="m5 7.5 5 5 5-5" />
+      </svg>
     </button>
     <div
       ng-if="$ctrl.showMenu && $ctrl.actions.state.menuMessageId === $ctrl.message.id"
       class="message-actions-menu"
-      ng-style="$ctrl.menuStyle"
+      ng-class="{'opens-up': $ctrl.menuOpensUp}"
       role="menu"
     >
       <button
@@ -179,11 +185,12 @@
     </div>
     <p
       class="message-operation-state"
-      ng-if="$ctrl.message.pendingMutation && ['PENDING','ACCEPTED','UNKNOWN','FAILED'].includes($ctrl.message.pendingMutation.state)"
+      ng-if="$ctrl.message.pendingMutation && ['PENDING','ACCEPTED','UNKNOWN','TIMEOUT','FAILED'].includes($ctrl.message.pendingMutation.state)"
     >
       {{$ctrl.message.pendingMutation.state === 'UNKNOWN' ? 'Operação sem confirmação — não repita
-      automaticamente' : $ctrl.message.pendingMutation.state === 'FAILED' ? 'Operação não concluída' :
-      'Operação aguardando confirmação'}}
+      automaticamente' : $ctrl.message.pendingMutation.state === 'TIMEOUT' ? 'Confirmação não recebida no
+      prazo — verifique o WhatsApp antes de repetir' : $ctrl.message.pendingMutation.state === 'FAILED' ?
+      'Operação não concluída' : 'Operação aguardando confirmação'}}
     </p>
     <div class="message-meta">
       <span

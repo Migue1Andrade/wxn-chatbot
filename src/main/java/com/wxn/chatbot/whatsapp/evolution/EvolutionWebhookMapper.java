@@ -21,7 +21,11 @@ public class EvolutionWebhookMapper {
     }
 
     public NormalizedInboundMessage text(JsonNode data, String connectedPhone) {
-        String remote = phone(data.path("key").path("remoteJid").asText());
+        String remoteJid = data.path("key").path("remoteJid").asText();
+        if (remoteJid.endsWith("@lid") && data.path("key").path("remoteJidAlt").isTextual()) {
+            remoteJid = data.path("key").path("remoteJidAlt").asText();
+        }
+        String remote = phone(remoteJid);
         String content = text(data.path("message"));
         if (content == null || content.length() > 1600) {
             throw ApiException.badRequest("Texto Evolution inválido ou excede 1600 caracteres");
@@ -35,7 +39,13 @@ public class EvolutionWebhookMapper {
             Map.of("text", content),
             timestamp > 0 ? Instant.ofEpochSecond(timestamp) : Instant.now(),
             data.path("pushName").asText(null),
-            data.path("message").path("extendedTextMessage").path("contextInfo").path("stanzaId").asText(null)
+            data
+                .path("message")
+                .path("extendedTextMessage")
+                .path("contextInfo")
+                .path("stanzaId")
+                .asText(null),
+            remoteJid
         );
     }
 
@@ -48,6 +58,85 @@ public class EvolutionWebhookMapper {
             case "5", "ERROR", "FAILED" -> NormalizedMessageStatus.FAILED;
             default -> NormalizedMessageStatus.UNKNOWN;
         };
+    }
+
+    public String editedText(JsonNode data) {
+        JsonNode message = data.path("message");
+        JsonNode protocol = message.path("protocolMessage");
+        String value = text(protocol.path("editedMessage"));
+        if (value == null) {
+            value = text(message.path("editedMessage"));
+        }
+        if (value == null) {
+            value = text(data.path("editedMessage"));
+        }
+        if (value == null) {
+            value = text(data.path("update").path("editedMessage"));
+        }
+        if (value == null) {
+            value = text(data.path("update").path("message").path("editedMessage"));
+        }
+        if (value == null) {
+            value = text(data.path("update").path("message").path("protocolMessage").path("editedMessage"));
+        }
+        return value;
+    }
+
+    public String messageId(JsonNode data) {
+        String value = data.path("key").path("id").asText(null);
+        if (value == null) {
+            value = data.path("keyId").asText(null);
+        }
+        if (value == null) {
+            value = data.path("messageId").asText(null);
+        }
+        if (value == null) {
+            value = data.path("update").path("key").path("id").asText(null);
+        }
+        if (value == null) {
+            value = data.path("update").path("keyId").asText(null);
+        }
+        if (value == null) {
+            value = data.path("update").path("messageId").asText(null);
+        }
+        if (value == null) {
+            value = data
+                .path("update")
+                .path("message")
+                .path("protocolMessage")
+                .path("key")
+                .path("id")
+                .asText(null);
+        }
+        if (value == null) {
+            value = data.path("message").path("protocolMessage").path("key").path("id").asText(null);
+        }
+        if (value == null) {
+            value = data
+                .path("message")
+                .path("protocolMessage")
+                .path("editedMessage")
+                .path("key")
+                .path("id")
+                .asText(null);
+        }
+        return value;
+    }
+
+    public String remotePhone(JsonNode data) {
+        String remoteJid = data.path("key").path("remoteJid").asText(null);
+        if (remoteJid == null) {
+            remoteJid = data.path("remoteJid").asText(null);
+        }
+        if (remoteJid == null) {
+            remoteJid = data.path("update").path("key").path("remoteJid").asText(null);
+        }
+        return remoteJid == null ? null : phone(remoteJid);
+    }
+
+    public Instant timestamp(JsonNode data) {
+        long value = data.path("messageTimestamp").asLong(0);
+        return value > 0 ? Instant.ofEpochSecond(value) : Instant.now();
     }
 
     private String text(JsonNode message) {

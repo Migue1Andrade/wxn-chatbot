@@ -2,6 +2,7 @@ package com.wxn.chatbot.websocket;
 
 import com.wxn.chatbot.auth.service.AccountSessions;
 import com.wxn.chatbot.config.DevelopmentAccess;
+import com.wxn.chatbot.config.FrontendOrigins;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.*;
@@ -44,43 +45,46 @@ public class WebSocketConfiguration implements WebSocketMessageBrokerConfigurer 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.setPreserveReceiveOrder(true);
-        registry.addEndpoint("/ws").setAllowedOrigins(origin).addInterceptors(
-            new HandshakeInterceptor() {
-                public boolean beforeHandshake(
-                    ServerHttpRequest request,
-                    ServerHttpResponse response,
-                    WebSocketHandler handler,
-                    Map<String, Object> attributes
-                ) {
-                    if (!access.enabled()) {
-                        response.setStatusCode(org.springframework.http.HttpStatus.NOT_FOUND);
+        registry
+            .addEndpoint("/ws")
+            .setAllowedOriginPatterns(FrontendOrigins.patterns(origin))
+            .addInterceptors(
+                new HandshakeInterceptor() {
+                    public boolean beforeHandshake(
+                        ServerHttpRequest request,
+                        ServerHttpResponse response,
+                        WebSocketHandler handler,
+                        Map<String, Object> attributes
+                    ) {
+                        if (!access.enabled()) {
+                            response.setStatusCode(org.springframework.http.HttpStatus.NOT_FOUND);
+                        }
+                        if (!access.enabled()) {
+                            return false;
+                        }
+                        if (!(request instanceof ServletServerHttpRequest servlet)) {
+                            response.setStatusCode(HttpStatus.UNAUTHORIZED);
+                            return false;
+                        }
+                        var session = servlet.getServletRequest().getSession(false);
+                        try {
+                            sessions.require(session);
+                        } catch (com.wxn.chatbot.common.ApiException denied) {
+                            response.setStatusCode(HttpStatus.UNAUTHORIZED);
+                            return false;
+                        }
+                        attributes.put(AccountSessions.SOCKET_SESSION, session);
+                        return true;
                     }
-                    if (!access.enabled()) {
-                        return false;
-                    }
-                    if (!(request instanceof ServletServerHttpRequest servlet)) {
-                        response.setStatusCode(HttpStatus.UNAUTHORIZED);
-                        return false;
-                    }
-                    var session = servlet.getServletRequest().getSession(false);
-                    try {
-                        sessions.require(session);
-                    } catch (com.wxn.chatbot.common.ApiException denied) {
-                        response.setStatusCode(HttpStatus.UNAUTHORIZED);
-                        return false;
-                    }
-                    attributes.put(AccountSessions.SOCKET_SESSION, session);
-                    return true;
-                }
 
-                public void afterHandshake(
-                    ServerHttpRequest request,
-                    ServerHttpResponse response,
-                    WebSocketHandler handler,
-                    Exception error
-                ) {}
-            }
-        );
+                    public void afterHandshake(
+                        ServerHttpRequest request,
+                        ServerHttpResponse response,
+                        WebSocketHandler handler,
+                        Exception error
+                    ) {}
+                }
+            );
     }
 
     @Override

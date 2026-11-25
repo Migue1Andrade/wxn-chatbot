@@ -7,8 +7,8 @@ import com.wxn.chatbot.whatsapp.entity.WhatsAppChannel;
 import com.wxn.chatbot.whatsapp.model.ChannelConnection;
 import com.wxn.chatbot.whatsapp.model.ConnectionInstructions;
 import com.wxn.chatbot.whatsapp.model.ProviderType;
-import com.wxn.chatbot.whatsapp.service.ChannelService;
 import com.wxn.chatbot.whatsapp.provider.ProviderSendException;
+import com.wxn.chatbot.whatsapp.service.ChannelService;
 import java.time.OffsetDateTime;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -89,7 +89,7 @@ public class EvolutionSetupService {
 
     @Transactional
     public Status initialize(String token) {
-        authorize(token);
+        authorize(token, false);
         config.requireConfigured();
         WhatsAppChannel channel = channels.firstActive(ProviderType.EVOLUTION);
         if (channel == null) {
@@ -115,8 +115,13 @@ public class EvolutionSetupService {
         if (!instanceExists()) {
             client.createInstance();
         }
-        client.configureWebhook();
         ConnectionInstructions instructions = provider.instructions(channel);
+        String message = instructions.instruction();
+        try {
+            client.configureWebhook();
+        } catch (ProviderSendException error) {
+            message += " O QR Code está disponível; o webhook será configurado após a conexão.";
+        }
         return new Status(
             true,
             saved.isCompleted(),
@@ -124,13 +129,13 @@ public class EvolutionSetupService {
             instructions.image(),
             saved.getConnectedPhone(),
             channel.getId(),
-            instructions.instruction()
+            message
         );
     }
 
     @Transactional
     public Status refresh(String token) {
-        authorize(token);
+        authorize(token, true);
         Status current = status();
         if (!current.configured() || current.channelId() == null) {
             return current;
@@ -138,6 +143,11 @@ public class EvolutionSetupService {
         WhatsAppChannel channel = channels.requireActive(current.channelId());
         ChannelConnection connection = provider.connection(channel);
         if (connection.available()) {
+            try {
+                client.configureWebhook();
+            } catch (ProviderSendException ignored) {
+                // A connection must not be lost because webhook configuration is retried later.
+            }
             complete(channel, channel.getPhoneNumber());
         }
         var saved = setupRepository.findById(SETUP_ID).orElse(null);
@@ -154,7 +164,7 @@ public class EvolutionSetupService {
 
     @Transactional
     public void observe(JsonNode body, String secret) {
-        if (!config.configured() || secret == null || !config.webhookSecret().equals(secret)) {
+        if (!config.configured() || !config.webhookAuthorized(secret)) {
             return;
         }
         String event = body.path("event").asText("");
@@ -194,12 +204,12 @@ public class EvolutionSetupService {
         }
     }
 
-    private void authorize(String token) {
+    private void authorize(String token, boolean allowCompleted) {
         if (!config.bootstrapConfigured() || !config.validBootstrapToken(token)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Token de bootstrap inválido");
         }
         var saved = setupRepository.findById(SETUP_ID).orElse(null);
-        if (saved != null && saved.isCompleted()) {
+        if (!allowCompleted && saved != null && saved.isCompleted()) {
             throw new ApiException(HttpStatus.CONFLICT, "Configuração inicial já concluída");
         }
     }

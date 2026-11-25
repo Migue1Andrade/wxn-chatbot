@@ -149,19 +149,6 @@ team-panel.team-visible {
   }
 }
 
-.team-panel-toggle {
-  display: block;
-  position: fixed;
-  bottom: 86px;
-  right: 18px;
-  z-index: 35;
-  background: var(--wxn-primary);
-  color: white;
-  padding: 9px 14px;
-  border-radius: 20px;
-  font-size: 11px;
-  box-shadow: 0 3px 12px #18203520;
-}
 team-panel.team-visible {
   position: fixed;
   right: 0;

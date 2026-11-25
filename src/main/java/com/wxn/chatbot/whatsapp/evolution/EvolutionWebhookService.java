@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 public class EvolutionWebhookService {
 
     private final EvolutionConfiguration config;
+    private final EvolutionApiClient client;
     private final EvolutionSetupService setup;
     private final ChannelService channels;
     private final MessageService messages;
@@ -24,6 +25,7 @@ public class EvolutionWebhookService {
 
     public EvolutionWebhookService(
         EvolutionConfiguration config,
+        EvolutionApiClient client,
         EvolutionSetupService setup,
         ChannelService channels,
         MessageService messages,
@@ -31,6 +33,7 @@ public class EvolutionWebhookService {
         WebhookInboxRepository inbox
     ) {
         this.config = config;
+        this.client = client;
         this.setup = setup;
         this.channels = channels;
         this.messages = messages;
@@ -39,7 +42,7 @@ public class EvolutionWebhookService {
     }
 
     public void receive(String secret, JsonNode body) {
-        if (!config.configured() || secret == null || !config.webhookSecret().equals(secret)) {
+        if (!config.configured() || !config.webhookAuthorized(secret)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Webhook Evolution não autorizado");
         }
         if (!body.isObject()) {
@@ -50,7 +53,8 @@ public class EvolutionWebhookService {
         if (channel == null) {
             throw ApiException.conflict("Canal Evolution ainda não foi inicializado");
         }
-        String key = inbox.accept(channel.getId(), body.path("event").asText("UNKNOWN"), body);
+        synchronizeConnectedPhone(channel);
+        String key = inbox.accept(channel.getId(), eventName(body), body);
         process(key);
     }
 
@@ -76,14 +80,28 @@ public class EvolutionWebhookService {
     }
 
     private void apply(WhatsAppChannel channel, JsonNode body) {
-        switch (body.path("event").asText("")) {
+        switch (eventName(body)) {
             case "MESSAGES_UPSERT", "SEND_MESSAGE" -> applyMessages(channel, body.path("data"));
-            case "MESSAGES_UPDATE" -> applyStatus(channel, body.path("data"));
+            case "MESSAGES_UPDATE" -> applyUpdates(channel, body.path("data"));
+            case "MESSAGES_DELETE" -> applyDeletes(channel, body.path("data"));
             case "CONNECTION_UPDATE", "QRCODE_UPDATED" -> {
                 // Connection state was observed before the idempotent inbox processing.
             }
             default -> {
                 // Other Evolution events are intentionally acknowledged and ignored for TEXT-only support.
+            }
+        }
+    }
+
+    static String eventName(JsonNode body) {
+        return body.path("event").asText("").replace('.', '_').replace('-', '_').toUpperCase(Locale.ROOT);
+    }
+
+    private void synchronizeConnectedPhone(WhatsAppChannel channel) {
+        if (channel.getPhoneNumber() == null) {
+            String phone = client.connectedPhone();
+            if (phone != null) {
+                channels.updatePhone(channel, phone);
             }
         }
     }
@@ -122,5 +140,33 @@ public class EvolutionWebhookService {
             channel,
             new NormalizedStatusEvent(externalId, mapper.status(data.path("status")), null)
         );
+    }
+
+    private void applyUpdates(WhatsAppChannel channel, JsonNode data) {
+        if (data.isArray()) {
+            data.forEach(item -> applyUpdates(channel, item));
+            return;
+        }
+        String editedId = mapper.messageId(data);
+        String editedText = mapper.editedText(data);
+        if (editedId != null && editedText != null) {
+            messages.remoteEdit(channel, editedId, editedText, mapper.timestamp(data));
+            return;
+        }
+        applyStatus(channel, data);
+    }
+
+    private void applyDeletes(WhatsAppChannel channel, JsonNode data) {
+        if (data.isArray()) {
+            data.forEach(item -> applyDeletes(channel, item));
+            return;
+        }
+        String id = data.path("key").path("id").asText(null);
+        if (id == null) {
+            id = data.path("message").path("protocolMessage").path("key").path("id").asText(null);
+        }
+        if (id != null && !id.isBlank()) {
+            messages.remoteDelete(channel, id, mapper.timestamp(data));
+        }
     }
 }

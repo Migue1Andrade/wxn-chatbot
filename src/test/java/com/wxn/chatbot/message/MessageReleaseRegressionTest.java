@@ -198,4 +198,42 @@ class MessageReleaseRegressionTest {
         );
         assertThat(message.getContent().getString("text")).isEqualTo("Anterior");
     }
+
+    @Test
+    void expiredMutationIsPublishedSoTheUiLeavesLoading() {
+        var operations = mock(MessageMutationRepository.class);
+        var message = new Message();
+        message.setId(new ObjectId());
+        message.setConversationId(conversation.getId());
+        message.setChannelId(2L);
+        message.setProvider(ProviderType.MOCK);
+        message.setDirection("OUTBOUND");
+        message.setType("TEXT");
+        message.setStatus(NormalizedMessageStatus.SENT);
+        message.setContent(new Document("text", "Texto enviado"));
+        message.setCreatedAt(java.time.OffsetDateTime.now());
+        message.setUpdatedAt(java.time.OffsetDateTime.now());
+        when(operations.expirePending(any())).thenReturn(List.of(message));
+        when(providers.messageCapabilities(ProviderType.MOCK)).thenReturn(Set.of());
+
+        var mutations = new MessageMutationService(
+            repository,
+            operations,
+            mock(ConversationAuthorization.class),
+            conversations,
+            channels,
+            providers,
+            mock(ChannelOperationsRepository.class),
+            events
+        );
+
+        mutations.expireUnconfirmed();
+
+        verify(operations).expirePending(any());
+        verify(conversations).refreshPreview(message);
+        verify(events).publish(
+            eq(com.wxn.chatbot.conversation.event.ConversationEventTypes.MESSAGE_STATUS_UPDATED),
+            any()
+        );
+    }
 }

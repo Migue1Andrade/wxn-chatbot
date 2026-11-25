@@ -262,7 +262,12 @@ public class MessageService {
                 MessageType.TEXT
             );
             if (reply != null) {
-                result = adapter.reply(channel, command, reply.getExternalMessageId());
+                result = adapter.reply(
+                    channel,
+                    command,
+                    reply.getExternalMessageId(),
+                    reply.getContent().getString("text")
+                );
             } else if (forwarded != null) {
                 Conversation source = conversations.require(forwarded.getConversationId().toHexString());
                 if (request.actorUserId() != null) {
@@ -357,6 +362,28 @@ public class MessageService {
             .findByChannelIdAndExternalMessageId(channel.getId(), status.externalMessageId())
             .filter(m -> Direction.OUTBOUND.name().equals(m.getDirection()))
             .ifPresent(m -> changeStatus(m, status.status(), status.errorCode()));
+    }
+
+    public void remoteEdit(WhatsAppChannel channel, String externalId, String value, java.time.Instant at) {
+        repository.findByChannelIdAndExternalMessageId(channel.getId(), externalId).ifPresent(message -> {
+            var edited = repository.applyRemoteEdit(message, value, at);
+            var confirmed = repository.confirmPendingEdit(edited.orElse(message), value);
+            confirmed
+                .or(() -> edited)
+                .ifPresent(updated ->
+                    events.publish(ConversationEventTypes.MESSAGE_STATUS_UPDATED, response(updated))
+                );
+        });
+    }
+
+    public void remoteDelete(WhatsAppChannel channel, String externalId, java.time.Instant at) {
+        repository
+            .findByChannelIdAndExternalMessageId(channel.getId(), externalId)
+            .flatMap(message -> repository.applyRemoteDeletion(message, at))
+            .ifPresent(message -> {
+                conversations.refreshPreview(message);
+                events.publish(ConversationEventTypes.MESSAGE_STATUS_UPDATED, response(message));
+            });
     }
 
     public void echo(WhatsAppChannel channel, NormalizedInboundMessage incoming, Boolean fromApi) {

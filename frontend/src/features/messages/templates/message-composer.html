@@ -30,14 +30,17 @@
   </p>
   <div
     ng-if="$ctrl.actions.state.reply"
-    class="message-quote flex justify-between"
+    class="composer-reply-preview"
   >
-    <span>
-      Respondendo a {{$ctrl.actions.state.reply.direction === 'OUTBOUND' ? 'equipe' : 'contato'}}:
-      {{$ctrl.actions.state.reply.content.text}}
-    </span>
+    <div class="composer-reply-content">
+      <span class="composer-reply-label">
+        Respondendo a {{$ctrl.actions.state.reply.direction === 'OUTBOUND' ? 'equipe' : 'contato'}}
+      </span>
+      <span class="composer-reply-text">{{$ctrl.actions.state.reply.content.text}}</span>
+    </div>
     <button
       type="button"
+      class="composer-reply-close"
       ng-disabled="$ctrl.sending"
       ng-click="$ctrl.actions.state.reply = null"
       aria-label="Cancelar resposta"

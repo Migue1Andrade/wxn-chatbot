@@ -17,10 +17,10 @@ public class WebCorsConfiguration implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry
             .addMapping("/api/**")
-            .allowedOrigins(origin)
+            .allowedOriginPatterns(FrontendOrigins.patterns(origin))
             .allowedMethods("GET", "POST", "PATCH", "DELETE", "OPTIONS")
             .allowCredentials(true)
-            .allowedHeaders("Content-Type", "X-Dev-Api-Key", "X-CSRF-Token")
+            .allowedHeaders("Content-Type", "X-Dev-Api-Key", "X-CSRF-Token", "X-WXN-Bootstrap-Token")
             .maxAge(3600);
     }
 }

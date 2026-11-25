@@ -4,8 +4,9 @@ import template from './whatsapp-setup.html?raw';
 angular.module('wxn.core').directive('whatsappSetup', [
   '$interval',
   '$location',
+  '$timeout',
   'WhatsAppBootstrapService',
-  function ($interval, $location, setup) {
+  function ($interval, $location, $timeout, setup) {
     return {
       restrict: 'E',
       scope: {},
@@ -16,18 +17,24 @@ angular.module('wxn.core').directive('whatsappSetup', [
         let poll;
         vm.form = {};
         vm.status = 'INITIALIZING';
+        const applyResult = (result) => {
+          if (result && !result.qrCode && vm.result?.qrCode && result.state !== 'CONNECTED') {
+            result.qrCode = vm.result.qrCode;
+          }
+          vm.result = result;
+          vm.status = result?.state || 'UNKNOWN';
+        };
         vm.load = () => {
           vm.loading = true;
           vm.error = '';
           setup
             .status()
             .then((result) => {
-              vm.result = result;
-              vm.status = result.state;
+              applyResult(result);
               if (result.completed) {
                 vm.status = 'CONNECTED';
                 vm.redirecting = true;
-                window.setTimeout(() => $location.path('/login'), 1200);
+                $timeout(() => $location.path('/login'), 1200);
               }
             })
             .catch((error) => {
@@ -47,8 +54,7 @@ angular.module('wxn.core').directive('whatsappSetup', [
           setup
             .initialize(vm.form.token)
             .then((result) => {
-              vm.result = result;
-              vm.status = result.state;
+              applyResult(result);
               vm.startPolling();
             })
             .catch((error) => {
@@ -67,12 +73,11 @@ angular.module('wxn.core').directive('whatsappSetup', [
           setup
             .refresh(vm.form.token)
             .then((result) => {
-              vm.result = result;
-              vm.status = result.state;
+              applyResult(result);
               if (result.completed || result.state === 'CONNECTED') {
                 vm.stopPolling();
                 vm.redirecting = true;
-                window.setTimeout(() => $location.path('/login'), 1200);
+                $timeout(() => $location.path('/login'), 1200);
               }
             })
             .catch((error) => {

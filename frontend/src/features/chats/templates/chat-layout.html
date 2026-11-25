@@ -20,15 +20,6 @@
     context-error="vm.contextError"
     on-reconnect="vm.reconnect()"
   ></chat-sidebar>
-  <button
-    ng-if="vm.state.selected"
-    type="button"
-    class="team-panel-toggle"
-    ng-click="vm.teamOpen = !vm.teamOpen"
-    aria-label="Abrir ou fechar painel da equipe"
-  >
-    Equipe
-  </button>
   <main
     class="chat-main flex min-w-0 flex-1 flex-col"
     aria-label="Conversa"
@@ -76,6 +67,7 @@
         connection="messages.actions.state.connection"
         on-refresh-connection="messages.actions.capabilities()"
         on-back="vm.back()"
+        on-team="vm.teamOpen = !vm.teamOpen"
       ></chat-header>
       <message-list
         class="relative flex min-h-0 flex-1 flex-col"

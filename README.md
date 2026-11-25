@@ -3,6 +3,10 @@
 Aplicação acadêmica de atendimento WhatsApp para uma organização única. Backend Java 21/Spring Boot,
 PostgreSQL com JPA/Flyway, MongoDB para dados conversacionais, AngularJS 1.8.3 e Tailwind CSS.
 
+O estado arquitetural atual é single-organization. As regras de `companyId` em [AGENTS.md](AGENTS.md)
+reservam uma evolução futura, mas não representam isolamento multi-tenant concluído. Consulte a
+[arquitetura](docs/ARCHITECTURE.md) antes de alterar módulos ou contratos.
+
 ## Execução local
 
 Configure `.env` a partir de `.env.example`, com credenciais locais e uma `DEV_API_KEY` de pelo menos
@@ -99,12 +103,15 @@ A coleção [Postman](postman/WXN-WhatsApp.postman_collection.json) usa os contr
 ```bash
 npm run lint:fix
 npm run lint
-mvn -DskipTests package
-npm --prefix frontend run build
+npm run test
+npm run build
+npm run build:backend
+mvn test
 git diff --check
 ```
 
-Para verificações existentes: `mvn test`, `npm --prefix frontend test` e
+`npm run check` executa a sequência completa. Para verificações específicas também existem
+`npm --prefix frontend test`,
 `bash scripts/verify-queue.sh` (bancos exclusivos de verificação). Consulte
 [estilo](docs/code-style.md) e [verificação da fila](docs/queue-verification.md).
 Nenhuma suíte nova é necessária para executar os builds.
@@ -128,7 +135,8 @@ incluindo Docker, variáveis, webhook, QR Code, reconexão e limpeza local, est�
 O fluxo real é `WhatsApp -> Evolution API -> Spring Boot -> MongoDB -> WebSocket -> AngularJS`.
 O QR Code é obtido do provider e nunca é simulado. As implementações antigas de Mock, Twilio e
 Z-API permanecem apenas para compatibilidade de testes/legado até a remoção definitiva de seus
-contratos, mas não fazem parte do onboarding nem da configuração ativa.
+contratos, mas não fazem parte do onboarding nem da configuração ativa. Mensagens recebidas de
+qualquer contato válido são aceitas; a autenticação do webhook e a idempotência continuam ativas.
 
 ## Histórico de providers
 
@@ -176,3 +184,8 @@ A referência operacional atual é [docs/whatsapp/evolution.md](docs/whatsapp/ev
 
 Configurações > Canais agora deve ser usada para diagnóstico do canal Evolution. A migration incremental V12
 registra o estado do onboarding sem alterar migrations anteriores.
+
+Edição, exclusão e outras mutações não misturam estado de entrega com estado da operação. Callbacks
+confirmam a alteração quando disponíveis; quando uma confirmação não chega em até 120 segundos, a
+operação é marcada como `TIMEOUT` e a interface orienta verificar o WhatsApp antes de repetir. Isso
+evita loading infinito sem afirmar falsamente que a ação remota falhou ou foi concluída.

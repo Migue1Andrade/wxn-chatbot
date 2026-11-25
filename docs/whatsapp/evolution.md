@@ -108,8 +108,10 @@ informado ao final.
 ## Testes
 
 ```bash
-./mvnw -DskipTests package
-cd frontend && npm run build && npm run lint
+npm run build:backend
+npm run lint
+npm run build
+npm run test
 ```
 
 Os testes automatizados usam fixtures/mocks e não substituem o teste real. A validação real

@@ -530,6 +530,31 @@ management-navigation {
 .details-button:hover {
   background: #f8fafc;
 }
+.team-header-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #bfe5d9;
+  background: #f1fbf7;
+  color: #147765;
+  padding: 10px 13px;
+  border-radius: 13px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.team-header-toggle:hover {
+  background: #e5f6ef;
+}
+.team-header-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
 .more-button {
   background: transparent;
   border: 0;
@@ -630,7 +655,7 @@ management-navigation {
 .message-card {
   min-width: 100px;
   max-width: 82%;
-  padding: 14px 17px 11px;
+  padding: 14px 50px 11px 17px;
   background: white;
   border-radius: 6px 18px 18px 18px;
   box-shadow: 0 2px 3px #19261e16;
@@ -723,7 +748,8 @@ management-navigation {
   line-height: 1.6;
 }
 .handoff-card button {
-  margin-top: 14px;
+  align-self: center;
+  margin: 0 0 0 auto;
   padding: 10px 16px;
   background: var(--green);
   border: 0;
@@ -736,6 +762,55 @@ management-navigation {
   padding: 16px 18px 13px;
   background: white;
   border-top: 1px solid var(--line);
+}
+.composer-reply-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  max-height: 78px;
+  margin-bottom: 10px;
+  padding: 9px 10px 9px 12px;
+  border: 1px solid #c8e5dc;
+  border-left: 3px solid var(--green);
+  border-radius: 10px;
+  background: #f3faf7;
+}
+.composer-reply-content {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+.composer-reply-label {
+  color: #147765;
+  font-size: 11px;
+  font-weight: 700;
+}
+.composer-reply-text {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #52657d;
+  font-size: 12px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.composer-reply-close {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  color: #6f8198;
+  font-size: 20px;
+  line-height: 1;
+}
+.composer-reply-close:hover {
+  background: #e1f2ec;
+  color: #0f6657;
 }
 .composer-input {
   width: 100%;
@@ -826,7 +901,7 @@ management-navigation {
     font-size: 22px;
   }
   .message-card {
-    padding: 20px 24px 16px;
+    padding: 20px 56px 16px 24px;
   }
   .message-row {
     margin-bottom: 29px;
@@ -1017,6 +1092,13 @@ management-navigation {
     padding: 9px;
     border-radius: 10px;
   }
+  .team-header-toggle {
+    padding: 8px;
+    border-radius: 10px;
+  }
+  .team-header-toggle span {
+    display: none;
+  }
   .more-button {
     font-size: 16px;
     padding: 5px 0;
@@ -1026,7 +1108,7 @@ management-navigation {
   }
   .message-card {
     max-width: 86%;
-    padding: 11px 13px 9px;
+    padding: 11px 42px 9px 13px;
   }
   .message-text {
     font-size: 13px;
@@ -1078,18 +1160,54 @@ management-navigation {
   position: relative;
 }
 .message-actions-trigger {
-  float: right;
-  margin-left: 12px;
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin: 0;
   color: #64748b;
-  padding: 0 4px;
+  padding: 3px;
+  border-radius: 6px;
+  line-height: 0;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+.message-actions-trigger:hover,
+.message-actions-trigger:focus-visible {
+  background: #e8f2ef;
+  color: #0f766e;
+  outline: none;
+}
+.message-actions-trigger svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 .message-actions-menu {
+  position: fixed;
+  top: 0;
+  right: auto;
   z-index: 100;
-  width: 220px;
+  width: min(220px, calc(100vw - 32px));
+  max-height: min(430px, calc(100vh - 24px));
+  overflow-y: auto;
   padding: 6px;
   border-radius: 10px;
   background: white;
   box-shadow: 0 6px 24px #0f172a33;
+}
+.message-actions-menu.opens-up {
+  top: 0;
 }
 .message-actions-menu button {
   display: block;

@@ -111,4 +111,17 @@ public class EvolutionConfiguration {
     public boolean bootstrapConfigured() {
         return bootstrapToken.length() >= 32;
     }
+
+    public boolean webhookAuthorized(String supplied) {
+        if (supplied == null || supplied.isBlank()) {
+            return allowHttp;
+        }
+        return (
+            webhookSecret.length() >= 32 &&
+            MessageDigest.isEqual(
+                webhookSecret.getBytes(StandardCharsets.UTF_8),
+                supplied.getBytes(StandardCharsets.UTF_8)
+            )
+        );
+    }
 }

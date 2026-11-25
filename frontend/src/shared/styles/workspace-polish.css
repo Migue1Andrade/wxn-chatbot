@@ -570,15 +570,6 @@ management-navigation .rail-link.is-active {
     min-height: 42px;
   }
 }
-@media (min-width: 761px) {
-  .chat-workspace .conversation-header {
-    padding-right: 84px;
-  }
-}
-
-.chat-workspace .conversation-header {
-  padding-right: 84px;
-}
 .chat-workspace .team-panel > header {
   padding-right: 65px;
 }

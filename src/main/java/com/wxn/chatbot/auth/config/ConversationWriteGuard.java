@@ -32,7 +32,11 @@ public class ConversationWriteGuard implements HandlerInterceptor {
             return true;
         }
         String[] parts = request.getServletPath().split("/");
-        if (parts.length < 4 || !Set.of("conversations", "messages").contains(parts[2])) {
+        if (
+            parts.length < 4 ||
+            !Set.of("conversations", "messages").contains(parts[2]) ||
+            ("conversations".equals(parts[2]) && "read".equals(parts[4]))
+        ) {
             return true;
         }
         sessions.require(request.getSession(false));

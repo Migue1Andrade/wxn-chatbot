@@ -2,6 +2,7 @@ package com.wxn.chatbot.messagelog.model;
 
 public enum MessageLogEvent {
     DELETE_ATTEMPTED("message.delete.attempted"),
+    DELETE_ACCEPTED("message.delete.accepted"),
     DELETE_CONFIRMED("message.delete.confirmed"),
     DELETE_FAILED("message.delete.failed"),
     DELETE_UNKNOWN("message.delete.unknown"),

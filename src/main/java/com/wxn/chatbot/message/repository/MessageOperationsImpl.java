@@ -145,6 +145,88 @@ public class MessageOperationsImpl implements MessageOperations {
         );
     }
 
+    public Optional<Message> applyRemoteEdit(Message message, String value, Instant at) {
+        if (value == null || value.isBlank() || message.getDeletedAt() != null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(
+            mongo.findAndModify(
+                scope(message)
+                    .addCriteria(Criteria.where("deletedAt").is(null))
+                    .addCriteria(
+                        new Criteria().orOperator(
+                            Criteria.where("editedAt").lt(at.atOffset(java.time.ZoneOffset.UTC)),
+                            Criteria.where("editedAt").is(null)
+                        )
+                    ),
+                new Update()
+                    .inc("version", 1)
+                    .set("content.text", value)
+                    .set("editedAt", at.atOffset(java.time.ZoneOffset.UTC))
+                    .set("updatedAt", OffsetDateTime.now())
+                    .push(
+                        "editHistory",
+                        new org.bson.Document("previousContent", message.getContent()).append(
+                            "at",
+                            java.util.Date.from(at)
+                        )
+                    ),
+                FindAndModifyOptions.options().returnNew(true),
+                Message.class
+            )
+        );
+    }
+
+    public Optional<Message> confirmPendingEdit(Message message, String value) {
+        String operationId =
+            message.getPendingMutation() == null
+                ? null
+                : message.getPendingMutation().getString("operationId");
+        if (operationId == null) {
+            return Optional.empty();
+        }
+        var confirmed = mongo.findAndModify(
+            scope(message)
+                .addCriteria(Criteria.where("pendingMutation.operation").is("EDIT_TEXT"))
+                .addCriteria(Criteria.where("pendingMutation.value").is(value))
+                .addCriteria(Criteria.where("pendingMutation.state").ne("CONFIRMED")),
+            new Update()
+                .inc("version", 1)
+                .set("pendingMutation.state", "CONFIRMED")
+                .set("content.text", value)
+                .set("editedAt", java.time.OffsetDateTime.now())
+                .set("updatedAt", java.time.OffsetDateTime.now()),
+            FindAndModifyOptions.options().returnNew(true),
+            Message.class
+        );
+        if (confirmed != null) {
+            mongo.updateFirst(
+                Query.query(
+                    Criteria.where("channelId").is(message.getChannelId()).and("operationId").is(operationId)
+                ),
+                new Update().set("outcome", "CONFIRMED").set("updatedAt", new java.util.Date()),
+                "message_operations"
+            );
+        }
+        return Optional.ofNullable(confirmed);
+    }
+
+    public Optional<Message> applyRemoteDeletion(Message message, Instant at) {
+        return Optional.ofNullable(
+            mongo.findAndModify(
+                scope(message).addCriteria(Criteria.where("deletedAt").is(null)),
+                new Update()
+                    .inc("version", 1)
+                    .set("deleteState", "CONFIRMED")
+                    .set("deletionIntent", "DELETE_FOR_EVERYONE")
+                    .set("deletedAt", at.atOffset(java.time.ZoneOffset.UTC))
+                    .set("updatedAt", OffsetDateTime.now()),
+                FindAndModifyOptions.options().returnNew(true),
+                Message.class
+            )
+        );
+    }
+
     private Query scope(Message message) {
         return Query.query(
             Criteria.where("_id")

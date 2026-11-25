@@ -1,8 +1,29 @@
 # Projeto WXN Chatbot — Regras do Projeto
 
+## Estado atual verificado
+
+- O código atual é um monólito de organização única. Embora as regras de evolução reservem
+  `companyId` para uma futura separação de tenants, o suporte multi-tenant não está concluído.
+- A integração WhatsApp ativa é Evolution API `v2.3.7` com `WHATSAPP-BAILEYS`; Mock, Twilio e Z-API
+  permanecem adapters compatíveis ou históricos e devem respeitar suas capacidades reais.
+- Conversas, mensagens, eventos, leituras e dados conversacionais ficam no MongoDB; PostgreSQL/Flyway
+  mantém entidades relacionais como usuários, membros, setores e configurações.
+- O frontend usa AngularJS 1.8.3/Vite e o tempo real usa STOMP sobre WebSocket.
+
+## Fluxo obrigatório de trabalho
+
+1. Ler este arquivo, `README.md`, `docs/code-style.md` e a documentação do módulo afetado.
+2. Inspecionar o estado do Git e preservar alterações preexistentes.
+3. Implementar a menor mudança coerente com a arquitetura atual.
+4. Atualizar testes e documentação quando o comportamento, contrato ou operação mudar.
+5. Executar `npm run lint`, `npm run test`, `npm run build`, `npm run build:backend` e as suítes
+   específicas aplicáveis. `npm run check` reúne essas verificações, inclusive `mvn test`.
+6. Revisar `git diff --check` e o diff completo. Não criar commit ou push automaticamente.
+
 ## Arquitetura
 
-- O projeto é multi-tenant/multiempresa.
+- A arquitetura de evolução reserva `companyId` para multi-tenancy/multiempresa, mas o código atual
+  opera como organização única; não presumir isolamento por tenant até que essa migração seja concluída.
 - `companyId` é o identificador central do tenant.
 - Dados pertencentes a uma empresa devem possuir `companyId`.
 - O backend nunca deve confiar cegamente em `companyId` enviado pelo cliente.
@@ -92,3 +113,30 @@
 - Não adicionar bibliotecas de runtime para resolver apresentação ou formatação.
 - Antes de concluir: executar `npm run lint:fix`, `npm run lint`, as verificações relevantes da alteração e `git diff --check`; revisar o diff, inclusive arquivos novos.
 - Nunca executar commit ou push sem pedido explícito do usuário. O workflow de lint apenas verifica e não altera arquivos.
+
+## Backend e integrações
+
+- Controllers validam entrada e delegam para services; repositories concentram MongoDB/PostgreSQL.
+- Webhooks devem validar segredo, ser idempotentes e responder com erro quando o processamento não for
+  concluído. Não confirmar operação remota apenas por HTTP 2xx quando o provider não garantir isso.
+- Mensagens separam estado de entrega de estado da operação de mutação. Operações sem callback não podem
+  ficar em loading indefinidamente: devem terminar em confirmação, falha ou `TIMEOUT`.
+- Eventos atrasados ou duplicados não podem ressuscitar mensagens, regredir estados ou criar cópias.
+- Nunca registrar tokens, API keys ou conteúdo integral de mensagens em logs de produção.
+
+## Frontend
+
+- HTTP fica nos services; coordenação de estado fica em controllers/directives/services; templates não
+  devem conter regras de negócio complexas.
+- Toda operação assíncrona precisa de estado explícito de loading, sucesso, falha e timeout.
+- Listeners e subscriptions devem ser removidos no ciclo de destruição da diretiva.
+- Reutilizar tokens e componentes visuais existentes em `frontend/src/shared`.
+- Atualizações STOMP devem reconciliar por ID/versão e nunca duplicar uma mensagem recebida por REST.
+
+## Documentação e arquivos mortos
+
+- Mudanças relevantes de API, provider, persistência, UX, arquitetura ou configuração devem atualizar
+  `README.md` e, quando aplicável, `docs/ARCHITECTURE.md` ou a documentação do módulo.
+- Remover código ou arquivos somente após verificar referências estáticas, injeção Spring, rotas,
+  carregamento dinâmico, scripts, CI e uso documental. Migrations históricas são imutáveis.
+- Não manter TODOs, comentários ou fallbacks que escondam falhas sem uma decisão técnica verificável.

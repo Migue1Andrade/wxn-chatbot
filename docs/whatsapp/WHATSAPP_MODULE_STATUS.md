@@ -169,7 +169,7 @@ Nenhum item dessa lista foi marcado como executado por inferência. Para habilit
 
 ## Execução final
 
-- `mvn test` com agente Mockito explícito: **65 testes declarados; 49 executados; 16 integrações opt-in ignoradas; zero falhas/erros**.
+- `mvn test` com agente Mockito explícito: **71 testes declarados; 55 executados; 16 integrações opt-in ignoradas; zero falhas/erros**.
 - Frontend: **9 testes passaram**, incluindo versão de mensagem e progressão do status Mock no mesmo timestamp.
 - **10 casos de contrato HTTP Z-API passaram**, sem conexão de rede, incluindo timeout, resposta grande e redação dos logs.
 - 53 assinaturas de injeção AngularJS verificadas estaticamente, sem divergências.
