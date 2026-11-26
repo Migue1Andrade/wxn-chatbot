@@ -49,6 +49,7 @@ import '../features/settings/management.service.js';
 import '../features/settings/management.directive.js';
 import '../features/auth/session.service.js';
 import '../features/auth/login.directive.js';
+import '../features/auth/password-reset.directive.js';
 import '../features/auth/bootstrap.service.js';
 import '../features/auth/whatsapp-setup.directive.js';
 import '../features/auth/whatsapp-setup.css';

@@ -214,12 +214,14 @@ management-navigation {
 }
 .inbox-search {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
+  box-sizing: border-box;
+  min-height: 38px;
   background: #f0f4f8;
   border-radius: 14px;
-  padding: 13px 15px;
-  margin: 21px 0 17px;
+  padding: 8px 12px;
+  margin: 16px 0 14px;
   color: #7b8faa;
 }
 .inbox-search svg {
@@ -233,7 +235,7 @@ management-navigation {
   width: 100%;
   min-width: 0;
   color: var(--ink);
-  font-size: 14px;
+  font-size: 13px;
   outline: none;
   background: transparent;
   border: 0;
@@ -244,29 +246,36 @@ management-navigation {
 .inbox-search input::placeholder {
   color: #94a4bd;
 }
-.inbox-tabs {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  scrollbar-width: thin;
-  padding-bottom: 2px;
+.inbox-selects {
+  display: grid;
+  gap: 10px;
 }
-.inbox-tabs button {
-  flex-shrink: 0;
-  padding: 9px 14px;
-  border-radius: 30px;
-  background: #f0f4f8;
-  color: #778ba7;
-  font-size: 14px;
-  line-height: 1.25;
-  border: 0;
+.inbox-selects.has-scope {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-.inbox-tabs button.is-active {
-  background: #131a2e;
-  color: white;
+.inbox-selects label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: var(--wxn-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
 }
-.inbox-tabs button:hover:not(.is-active) {
-  background: #e7edf4;
+.inbox-selects select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  border: 1px solid var(--wxn-border);
+  border-radius: 9px;
+  padding: 6px 8px;
+  background: var(--wxn-surface);
+  color: var(--wxn-text);
+  font-size: 13px;
+  font-weight: 500;
+}
+.inbox-selects select:focus-visible {
+  outline: 2px solid var(--wxn-primary);
+  outline-offset: 2px;
 }
 .inbox-filters {
   background: #fbfcfd;
@@ -346,7 +355,7 @@ management-navigation {
 }
 .conversation-title strong {
   color: var(--ink);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -363,8 +372,8 @@ management-navigation {
   white-space: nowrap;
   text-overflow: ellipsis;
   color: #8092ad;
-  font-size: 13px;
-  margin-top: 6px;
+  font-size: 12px;
+  margin-top: 4px;
 }
 .conversation-meta {
   display: flex;
@@ -400,6 +409,27 @@ management-navigation {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+.conversation-reply-state {
+  display: block;
+  margin-top: 6px;
+  color: #526681;
+  font-size: 11px;
+}
+.conversation-active-owner {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  margin-top: 6px;
+  color: #526681;
+  font-size: 12px;
+}
+.conversation-active-owner strong {
+  min-width: 0;
+  color: var(--ink);
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 .unread-badge {
   display: flex;
@@ -520,12 +550,29 @@ management-navigation {
   flex-shrink: 0;
 }
 .details-button {
+  width: 108px;
+  height: 40px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   border: 1px solid var(--line);
   background: white;
   color: #5e708b;
-  padding: 10px 13px;
-  border-radius: 13px;
-  font-size: 16px;
+  padding: 0 12px;
+  border-radius: 11px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.details-button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .details-button:hover {
   background: #f8fafc;
@@ -533,18 +580,25 @@ management-navigation {
 .team-header-toggle {
   display: inline-flex;
   align-items: center;
+  width: 108px;
+  height: 40px;
   gap: 7px;
   border: 1px solid #bfe5d9;
   background: #f1fbf7;
   color: #147765;
-  padding: 10px 13px;
-  border-radius: 13px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 11px;
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
 }
 .team-header-toggle:hover {
   background: #e5f6ef;
+}
+.team-header-toggle.is-active {
+  background: #e5f6ef;
+  border-color: #9bd2bf;
 }
 .team-header-toggle svg {
   width: 18px;
@@ -879,16 +933,13 @@ management-navigation {
     border-radius: 18px;
   }
   .inbox-search {
-    margin: 29px 0 23px;
-    padding: 19px 21px;
-    border-radius: 18px;
+    min-height: 38px;
+    margin: 16px 0 14px;
+    padding: 8px 12px;
+    border-radius: 12px;
   }
   .inbox-search input {
-    font-size: 22px;
-  }
-  .inbox-tabs button {
-    padding: 12px 18px;
-    font-size: 22px;
+    font-size: 13px;
   }
   .contact-heading h2 {
     font-size: 22px;
@@ -897,8 +948,10 @@ management-navigation {
     font-size: 18px;
   }
   .details-button {
-    padding: 14px 18px;
-    font-size: 22px;
+    width: 108px;
+    height: 40px;
+    padding: 0 10px;
+    font-size: 13px;
   }
   .message-card {
     padding: 20px 56px 16px 24px;
@@ -942,10 +995,10 @@ management-navigation {
     min-height: 156px;
   }
   .conversation-title strong {
-    font-size: 19px;
+    font-size: 16px;
   }
   .conversation-preview {
-    font-size: 17px;
+    font-size: 14px;
   }
   .contact-avatar {
     width: 62px;
@@ -957,7 +1010,7 @@ management-navigation {
     padding: 23px 26px;
   }
   .message-text {
-    font-size: 20px;
+    font-size: 16px;
   }
   .message-avatar {
     width: 34px;
@@ -1033,11 +1086,12 @@ management-navigation {
     font-size: 11px;
   }
   .inbox-search {
-    padding: 12px;
-    margin-top: 20px;
+    min-height: 40px;
+    padding: 10px 12px;
+    margin: 16px 0 14px;
   }
   .inbox-search input {
-    font-size: 12px;
+    font-size: 16px;
   }
   .conversation-row {
     min-height: 112px;
@@ -1088,12 +1142,20 @@ management-navigation {
     gap: 7px;
   }
   .details-button {
-    font-size: 12px;
-    padding: 9px;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    padding: 0;
+    font-size: 0;
     border-radius: 10px;
   }
   .team-header-toggle {
-    padding: 8px;
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    flex: 0 0 40px;
+    justify-content: center;
+    padding: 0;
     border-radius: 10px;
   }
   .team-header-toggle span {

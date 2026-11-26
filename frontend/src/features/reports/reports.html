@@ -11,9 +11,50 @@
     <section class="rounded-xl border border-slate-200 bg-white p-6">
       <h2 class="mb-3 text-sm font-semibold">Atendimentos · histórico completo</h2>
       <p class="mb-5 text-sm leading-6 text-slate-500">
-        CSV com protocolo, cliente, status, prioridade, responsável, canal, abertura, resolução e situação
-        atual do SLA. A exportação é paginada no servidor e pode levar alguns segundos.
+        CSV UTF-8 com protocolo, cliente, status, prioridade, responsável, canal, abertura, resolução e
+        situação atual do SLA. Inclui o histórico completo, sem filtro, inclusive conversas encerradas. O
+        servidor percorre páginas de 100 registros ordenadas da mais antiga para a mais recente.
       </p>
+      <div class="mb-5 flex flex-wrap items-end gap-3">
+        <label class="grid gap-1 text-xs text-slate-600">
+          Abertura a partir de
+          <input
+            type="date"
+            ng-model="vm.filters.from"
+            aria-label="Data inicial de abertura"
+          />
+        </label>
+        <label class="grid gap-1 text-xs text-slate-600">
+          Até
+          <input
+            type="date"
+            ng-model="vm.filters.to"
+            aria-label="Data final de abertura"
+          />
+        </label>
+        <label class="grid gap-1 text-xs text-slate-600">
+          Status
+          <select
+            ng-model="vm.filters.status"
+            aria-label="Status da conversa"
+          >
+            <option value="">Todos</option>
+            <option value="PENDING">Pendente</option>
+            <option value="IN_PROGRESS">Em atendimento</option>
+            <option value="WAITING_CUSTOMER">Aguardando cliente</option>
+            <option value="RESOLVED">Resolvida</option>
+            <option value="CLOSED">Encerrada</option>
+            <option value="CANCELLED">Cancelada</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          ng-click="vm.filters = {}"
+          class="rounded-lg border px-3 py-2 text-sm"
+        >
+          Histórico completo
+        </button>
+      </div>
       <button
         ng-disabled="vm.busy"
         ng-click="vm.export()"
@@ -21,6 +62,13 @@
       >
         {{vm.busy ? 'Preparando arquivo…' : 'Exportar CSV'}}
       </button>
+      <p
+        ng-if="vm.success"
+        role="status"
+        class="product-success"
+      >
+        {{vm.success}}
+      </p>
       <p class="mt-5 text-xs text-slate-400">
         O relatório reflete os dados consultados durante a exportação. A operação continua recebendo
         atualizações enquanto o arquivo é gerado.

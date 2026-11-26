@@ -6,7 +6,21 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
 
 public interface NotificationRepository extends JpaRepository<UserNotification, Long> {
+    List<UserNotification> findByResourceTypeAndResourceIdAndType(
+        String resourceType,
+        String resourceId,
+        String type
+    );
     List<UserNotification> findByUserIdOrderByCreatedAtDescIdDesc(Long user, Pageable page);
+
+    @Query(
+        """
+        select n from UserNotification n where n.userId = :user
+          and (n.type <> 'CONVERSATION_AVAILABLE' or n.readAt is null)
+        order by n.createdAt desc, n.id desc
+        """
+    )
+    List<UserNotification> findVisible(long user, Pageable page);
 
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.data.jpa.repository.Query(
@@ -32,9 +46,31 @@ public interface NotificationRepository extends JpaRepository<UserNotification, 
 
     long countByUserIdAndReadAtIsNull(Long user);
 
+    java.util.Optional<UserNotification> findFirstByIdAndUserIdAndTypeAndResourceTypeAndReadAtIsNull(
+        Long id,
+        Long user,
+        String type,
+        String resourceType
+    );
+
     @Modifying
     @Query(
-        "update UserNotification n set n.readAt = CURRENT_TIMESTAMP where n.userId = :user and n.readAt is null"
+        "update UserNotification n set n.readAt = CURRENT_TIMESTAMP where n.resourceType = 'CONVERSATION' and n.resourceId = :resourceId and n.type = 'CONVERSATION_AVAILABLE' and n.readAt is null"
+    )
+    int dismissAvailable(@org.springframework.data.repository.query.Param("resourceId") String resourceId);
+
+    @Modifying
+    @Query(
+        "update UserNotification n set n.readAt = CURRENT_TIMESTAMP where n.userId = :userId and n.resourceType = 'TASK' and n.resourceId = :resourceId and n.type = 'TASK_OVERDUE' and n.readAt is null"
+    )
+    int dismissTaskOverdue(
+        @org.springframework.data.repository.query.Param("resourceId") String resourceId,
+        @org.springframework.data.repository.query.Param("userId") Long userId
+    );
+
+    @Modifying
+    @Query(
+        "update UserNotification n set n.readAt = CURRENT_TIMESTAMP where n.userId = :user and n.readAt is null and n.type <> 'CONVERSATION_AVAILABLE'"
     )
     void readAll(Long user);
 }

@@ -12,7 +12,8 @@
     on-select="vm.select(conversation)"
     on-retry="vm.refresh()"
     on-filter="vm.changeFilter(filter)"
-    on-reader="vm.changeReader(id)"
+    is-admin="vm.isAdmin"
+    on-scope="vm.changeScope(scope)"
     on-responsible="vm.changeResponsible()"
     filters="vm.filters"
     on-search="vm.search()"
@@ -62,6 +63,7 @@
         members="vm.member.members"
         channels="vm.channels"
         actor="vm.member.member"
+        is-admin="vm.isAdmin"
         conversation="vm.state.selected"
         channel-name="{{vm.channelName(vm.state.selected.channelId)}}"
         connection="messages.actions.state.connection"
@@ -229,8 +231,8 @@
       <message-composer
         conversation-id="vm.state.selected.id"
         sending="messages.operation().loading"
-        blocked="!messages.actions.supports('SEND_TEXT') || !vm.channelActive(vm.state.selected.channelId) || vm.state.selected.status === 'CLOSED' || vm.state.selected.status === 'RESOLVED'"
-        reason="{{messages.actions.state.unavailableReason || messages.member.error || ((vm.state.selected.status === 'CLOSED' || vm.state.selected.status === 'RESOLVED') ? 'Reabra o atendimento para responder.' : '') || (!vm.channelActive(vm.state.selected.channelId) ? 'O canal está indisponível ou inativo.' : '')}}"
+        blocked="!vm.ownsSelected() || !messages.actions.supports('SEND_TEXT') || !vm.channelActive(vm.state.selected.channelId) || vm.isFinal(vm.state.selected)"
+        reason="{{(!vm.ownsSelected() ? 'Assuma a conversa antes de responder.' : '') || messages.actions.state.unavailableReason || messages.member.error || (vm.state.selected.status === 'CANCELLED' || vm.state.selected.botSessionEndedAt ? 'Este atendimento terminou. Uma nova mensagem do cliente abre outra conversa.' : (vm.isFinal(vm.state.selected) ? 'Reabra o atendimento para responder.' : '')) || (!vm.channelActive(vm.state.selected.channelId) ? 'O canal está indisponível ou inativo.' : '')}}"
         member-name="{{messages.actions.actor().name}}"
       ></message-composer>
     </section>
@@ -241,7 +243,6 @@
     ng-click="vm.teamOpen = false"
   ></div>
   <team-panel
-    focus-region="vm.teamOpen"
     on-region-close="vm.teamOpen = false"
     on-close="vm.teamOpen = false"
     ng-if="vm.state.selected"

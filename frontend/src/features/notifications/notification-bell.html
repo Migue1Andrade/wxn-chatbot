@@ -89,8 +89,9 @@
         </span>
         <span class="notification-copy">
           <small>
-            {{row.resourceType === 'CONVERSATION' ? 'Atendimento atribuído' : row.type === 'TASK_OVERDUE' ?
-            'Prazo de atividade' : 'Atividade da equipe'}}
+            {{row.type === 'CONVERSATION_AVAILABLE' ? 'Conversa disponível' : row.resourceType ===
+            'CONVERSATION' ? 'Atendimento atribuído' : row.type === 'TASK_OVERDUE' ? 'Prazo de atividade' :
+            'Atividade da equipe'}}
           </small>
           <strong>{{row.title}}</strong>
           <time>{{row.createdAt | date:'dd MMM · HH:mm'}}</time>
@@ -130,7 +131,9 @@
         ← Voltar às notificações
       </button>
       <span class="notification-eyebrow">
-        {{bell.selected.type === 'TASK_OVERDUE' ? 'ATIVIDADE VENCIDA' : 'ATIVIDADE'}}
+        {{bell.selected.resourceType === 'CONVERSATION' ? 'ATENDIMENTO' : bell.selected.type ===
+        'TASK_OVERDUE' ? (bell.task.type === 'FOLLOW_UP' ? 'RETORNO VENCIDO' : 'ATIVIDADE VENCIDA') :
+        'ATIVIDADE'}}
       </span>
       <h3>{{bell.selected.title}}</h3>
       <p
@@ -165,7 +168,7 @@
           class="notification-hint"
           ng-if="bell.task.conversationId"
         >
-          Continue o atendimento na conversa vinculada. As mensagens são enviadas pelo chat.
+          Retorno: {{bell.task.title}}. Continue na conversa vinculada; mensagens são enviadas pelo chat.
         </p>
         <div class="notification-detail-actions">
           <button
@@ -174,7 +177,7 @@
             ng-if="bell.task.conversationId"
             ng-click="bell.go('/', {conversation:bell.task.conversationId})"
           >
-            Abrir conversa para responder ↗
+            Abrir conversa original para responder ↗
           </button>
           <button
             type="button"
@@ -182,11 +185,29 @@
             ng-disabled="bell.busy"
             ng-click="bell.complete()"
           >
-            {{bell.busy ? 'Concluindo…' : '✓ Concluir atividade'}}
+            {{bell.busy ? 'Concluindo…' : bell.task.type === 'FOLLOW_UP' ? '✓ Concluir retorno' : '✓ Concluir
+            atividade'}}
           </button>
         </div>
       </div>
-      <div ng-if="bell.selected.resourceType === 'CONVERSATION'">
+      <div ng-if="bell.selected.type === 'CONVERSATION_AVAILABLE'">
+        <p class="notification-hint">
+          Um atendimento aguarda responsável. Assuma a conversa para abrir o histórico e responder.
+        </p>
+        <div class="notification-detail-actions">
+          <button
+            type="button"
+            class="notification-primary"
+            ng-click="bell.claim()"
+            ng-disabled="bell.busy"
+          >
+            {{bell.busy ? 'Assumindo…' : 'Assumir conversa'}}
+          </button>
+        </div>
+      </div>
+      <div
+        ng-if="bell.selected.resourceType === 'CONVERSATION' && bell.selected.type !== 'CONVERSATION_AVAILABLE'"
+      >
         <p class="notification-hint">
           Acesse o atendimento para consultar o contexto e responder. O acesso depende da atribuição atual.
         </p>
@@ -203,7 +224,7 @@
       <button
         type="button"
         class="notification-read"
-        ng-if="!bell.selected.readAt"
+        ng-if="!bell.selected.readAt && bell.selected.type !== 'CONVERSATION_AVAILABLE'"
         ng-click="bell.center.read(bell.selected)"
       >
         Marcar como lida

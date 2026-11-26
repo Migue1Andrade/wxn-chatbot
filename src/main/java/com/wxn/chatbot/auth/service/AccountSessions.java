@@ -17,6 +17,7 @@ public class AccountSessions {
     public static final String USER_ID = "wxn.userId";
     public static final String SOCKET_SESSION = "wxn.httpSession";
     private static final String CSRF = "wxn.csrf";
+    private static final String CREDENTIAL_VERSION = "wxn.credentialVersion";
     private final SecureRandom random = new SecureRandom();
     private final UserService users;
 
@@ -41,7 +42,13 @@ public class AccountSessions {
         if (!(id instanceof Long userId)) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Entre para continuar");
         }
-        users.requireActive(userId);
+        var user = users.requireActive(userId);
+        Object stored = session.getAttribute(CREDENTIAL_VERSION);
+        long version = stored instanceof Long value ? value : 0L;
+        if (version != user.getCredentialVersion()) {
+            session.invalidate();
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Sessão encerrada; entre novamente");
+        }
         return identity(users.get(userId));
     }
 
@@ -56,7 +63,11 @@ public class AccountSessions {
             try {
                 identity = require(session);
             } catch (ApiException unavailable) {
-                session.invalidate();
+                try {
+                    session.invalidate();
+                } catch (IllegalStateException alreadyInvalidated) {
+                    // Credential-version rejection may already have closed the session.
+                }
                 session = request.getSession(true);
             }
         }
@@ -67,10 +78,12 @@ public class AccountSessions {
     }
 
     public State login(HttpServletRequest request, String username, String password) {
-        UserDtos.Response user = users.authenticate(username, password);
+        var authenticated = users.authenticate(username, password);
+        UserDtos.Response user = authenticated.user();
         HttpSession session = request.getSession(true);
         request.changeSessionId();
         session.setAttribute(USER_ID, user.id());
+        session.setAttribute(CREDENTIAL_VERSION, authenticated.credentialVersion());
         session.setAttribute(CSRF, token());
         session.setMaxInactiveInterval(1800);
         return new State(identity(user), (String) session.getAttribute(CSRF));

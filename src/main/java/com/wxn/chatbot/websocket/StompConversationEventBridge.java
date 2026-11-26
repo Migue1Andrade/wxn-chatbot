@@ -49,6 +49,24 @@ public class StompConversationEventBridge {
     }
 
     @EventListener
+    public void notificationChanged(com.wxn.chatbot.notification.service.NotificationService.Changed event) {
+        if (access.enabled()) {
+            try {
+                messaging.convertAndSend(
+                    "/topic/users/" + event.userId() + "/notifications",
+                    new NotificationFrame(
+                        java.util.UUID.randomUUID(),
+                        "notification.changed",
+                        java.util.Map.of()
+                    )
+                );
+            } catch (org.springframework.messaging.MessagingException unavailable) {
+                LOGGER.warn("Atualização de notificações STOMP indisponível");
+            }
+        }
+    }
+
+    @EventListener
     public void connection(com.wxn.chatbot.whatsapp.operations.ChannelOperationsService.Changed event) {
         if (access.enabled()) {
             try {

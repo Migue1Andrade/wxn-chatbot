@@ -12,7 +12,6 @@ import com.wxn.chatbot.message.mapper.MessageMapper;
 import com.wxn.chatbot.message.repository.MessageRepository;
 import com.wxn.chatbot.messagelog.model.MessageLogEvent;
 import com.wxn.chatbot.messagelog.service.MessageLogService;
-import com.wxn.chatbot.user.entity.UserRole;
 import com.wxn.chatbot.whatsapp.model.*;
 import com.wxn.chatbot.whatsapp.model.DeleteMessageRequest.DeleteIntent;
 import com.wxn.chatbot.whatsapp.provider.*;
@@ -62,10 +61,7 @@ public class MessageActionsService {
         ) {
             throw ApiException.conflict("Reabra o atendimento para executar esta operação");
         }
-        if (
-            actor.role() != UserRole.ADMIN &&
-            (actor.memberId() == null || !Objects.equals(c.getAssignedMemberId(), actor.memberId()))
-        ) {
+        if (actor.memberId() == null || !Objects.equals(c.getAssignedMemberId(), actor.memberId())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Assuma o atendimento para operar suas mensagens");
         }
         var channel = channels.requireActive(c.getChannelId());

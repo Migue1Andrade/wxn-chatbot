@@ -14,10 +14,7 @@
   <dt class="text-slate-400">Tipo</dt>
   <dd class="text-slate-700">{{$details.conversation.conversationType || 'Não informado'}}</dd>
   <dt class="text-slate-400">Status</dt>
-  <dd class="text-slate-700">
-    {{$details.conversation.status === 'CLOSED' ? 'Finalizado' : ($details.conversation.status ===
-    'IN_PROGRESS' ? 'Em atendimento' : 'Pendente')}}
-  </dd>
+  <dd class="text-slate-700">{{$details.statusLabel($details.conversation.status)}}</dd>
   <dt class="text-slate-400">Responsável</dt>
   <dd class="text-slate-700">{{$details.responsible}}</dd>
   <dt class="text-slate-400">Criada</dt>

@@ -55,7 +55,11 @@ public final class ConversationMapper {
             c.getDisplayName() == null || c.getDisplayName().isBlank()
                 ? c.getContactPhone()
                 : c.getDisplayName(),
-            c.getContactId() == null ? null : c.getContactId().toHexString()
+            c.getContactId() == null ? null : c.getContactId().toHexString(),
+            instant(c.getLastInboundAt()),
+            instant(c.getLastOutboundAt()),
+            c.getLastMessageDirection(),
+            instant(c.getBotSessionEndedAt())
         );
     }
 

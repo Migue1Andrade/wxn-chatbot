@@ -59,6 +59,13 @@ public class Conversation {
         lastMessagePreview = value;
     }
 
+    @Field("lastMessageDirection")
+    private String lastMessageDirection;
+
+    public String getLastMessageDirection() {
+        return lastMessageDirection;
+    }
+
     @Field("lastMessageAt")
     private OffsetDateTime lastMessageAt;
 
@@ -180,6 +187,39 @@ public class Conversation {
     }
 
     private OffsetDateTime lastInboundAt;
+
+    @Field("botInactivityWarnedAt")
+    private OffsetDateTime botInactivityWarnedAt;
+
+    @Field("botResolutionPendingAt")
+    private OffsetDateTime botResolutionPendingAt;
+
+    @Field("botSessionEndedAt")
+    private OffsetDateTime botSessionEndedAt;
+
+    public OffsetDateTime getBotInactivityWarnedAt() {
+        return botInactivityWarnedAt;
+    }
+
+    public void setBotInactivityWarnedAt(OffsetDateTime value) {
+        botInactivityWarnedAt = value;
+    }
+
+    public OffsetDateTime getBotResolutionPendingAt() {
+        return botResolutionPendingAt;
+    }
+
+    public void setBotResolutionPendingAt(OffsetDateTime value) {
+        botResolutionPendingAt = value;
+    }
+
+    public OffsetDateTime getBotSessionEndedAt() {
+        return botSessionEndedAt;
+    }
+
+    public void setBotSessionEndedAt(OffsetDateTime value) {
+        botSessionEndedAt = value;
+    }
 
     public OffsetDateTime getLastInboundAt() {
         return lastInboundAt;

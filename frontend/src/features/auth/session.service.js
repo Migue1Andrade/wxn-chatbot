@@ -33,7 +33,7 @@ angular
         notifications.items = [];
         notifications.count = 0;
         const members = $injector.get('DevMemberContextService').state;
-        Object.assign(members, { member: null, members: [], availableHumans: [] });
+        Object.assign(members, { member: null, members: [] });
       }
       function apply(result) {
         if (state.user?.id !== result.user?.id || state.user?.role !== result.user?.role) {

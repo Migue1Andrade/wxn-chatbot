@@ -40,11 +40,19 @@ services:
         condition: service_healthy
       evolution-api:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     ports:
       - '${BACKEND_PORT:-4001}:4001'
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       BACKEND_PORT: 4001
+      OPENBOT_SUPPORT_ENABLED: ${OPENBOT_SUPPORT_ENABLED:-false}
+      OPENBOT_SUPPORT_WEBHOOK_URL: ${OPENBOT_SUPPORT_WEBHOOK_URL:-}
+      OPENBOT_SUPPORT_SERVICE_TOKEN: ${OPENBOT_SUPPORT_SERVICE_TOKEN:-}
+      OPENBOT_SUPPORT_HMAC_SECRET: ${OPENBOT_SUPPORT_HMAC_SECRET:-}
+      OPENBOT_SUPPORT_AUTO_ASSIGN_BOT_ID: ${OPENBOT_SUPPORT_AUTO_ASSIGN_BOT_ID:-}
+      OPENBOT_SUPPORT_AUTO_ASSIGN_CHANNEL_ID: ${OPENBOT_SUPPORT_AUTO_ASSIGN_CHANNEL_ID:-}
       POSTGRES_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -58,6 +66,14 @@ services:
       EVOLUTION_WEBHOOK_SECRET: ${EVOLUTION_WEBHOOK_SECRET:?Defina EVOLUTION_WEBHOOK_SECRET no ambiente ou .env}
       EVOLUTION_ALLOW_HTTP: 'true'
       WXN_BOOTSTRAP_TOKEN: ${WXN_BOOTSTRAP_TOKEN:?Defina WXN_BOOTSTRAP_TOKEN no ambiente ou .env}
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_AUTH: ${SMTP_AUTH:-false}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
+      PASSWORD_RESET_PUBLIC_URL: ${PASSWORD_RESET_PUBLIC_URL:-http://localhost:${FRONTEND_PORT:-4002}/#!/reset-password}
+      PASSWORD_RESET_FROM: ${PASSWORD_RESET_FROM:-no-reply@wxn.local}
     healthcheck:
       test:
         [
@@ -67,6 +83,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 20
+
+  mailpit:
+    image: axllent/mailpit:v1.27.3
+    ports:
+      - '127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025'
+      - '127.0.0.1:${MAILPIT_WEB_PORT:-8025}:8025'
 
   frontend:
     build:
@@ -83,7 +105,7 @@ services:
     ports:
       - '${FRONTEND_PORT:-4002}:80'
     healthcheck:
-      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost/']
+      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1/']
       interval: 10s
       timeout: 5s
       retries: 10

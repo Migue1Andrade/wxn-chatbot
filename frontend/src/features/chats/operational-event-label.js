@@ -10,6 +10,10 @@ export function operationalEventLabel(event, memberName) {
       return (
         'Transferido de ' + memberName(event.previousMemberId) + ' para ' + memberName(event.newMemberId)
       );
+    case 'BOT_HANDOFF_TO_QUEUE':
+      return 'Encaminhado para a fila de atendimento humano';
+    case 'CONVERSATION_CANCELLED':
+      return 'Atendimento cancelado por inatividade';
     case 'CONVERSATION_RESOLVED':
       return 'Atendimento resolvido';
     case 'CONVERSATION_PRIORITY_CHANGED':

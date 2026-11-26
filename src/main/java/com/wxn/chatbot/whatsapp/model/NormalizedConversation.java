@@ -23,7 +23,11 @@ public record NormalizedConversation(
     long version,
     Long unreadCount,
     String displayName,
-    String contactId
+    String contactId,
+    Instant lastInboundAt,
+    Instant lastOutboundAt,
+    String lastMessageDirection,
+    Instant botSessionEndedAt
 ) implements CanonicalEventPayload {
     @com.fasterxml.jackson.annotation.JsonIgnore
     public String conversationId() {

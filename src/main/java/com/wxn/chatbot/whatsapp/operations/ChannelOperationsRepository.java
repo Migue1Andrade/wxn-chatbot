@@ -23,7 +23,10 @@ public class ChannelOperationsRepository {
                 "assignedMemberId",
                 new Document("channelId", id)
                     .append("assignedMemberId", new Document("$ne", null))
-                    .append("status", new Document("$nin", java.util.List.of("CLOSED", "RESOLVED"))),
+                    .append(
+                        "status",
+                        new Document("$nin", java.util.List.of("CLOSED", "RESOLVED", "CANCELLED"))
+                    ),
                 Long.class
             )
             .forEach(members::add);

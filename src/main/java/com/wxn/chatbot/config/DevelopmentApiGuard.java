@@ -18,7 +18,11 @@ public class DevelopmentApiGuard extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
-        return !(path.startsWith("/api/") && !path.startsWith("/api/webhooks/"));
+        return !(
+            path.startsWith("/api/") &&
+            !path.startsWith("/api/webhooks/") &&
+            !("POST".equals(request.getMethod()) && path.equals("/api/openbot/support/replies"))
+        );
     }
 
     @Override

@@ -76,7 +76,15 @@ public class MessageMutationService {
     ) {
         authorization.require(message.getConversationId().toHexString(), actor);
         var conversation = conversations.require(message.getConversationId().toHexString());
-        if (Set.of("CLOSED", "RESOLVED").contains(conversation.operationalStatus().name())) {
+        if (
+            actor.memberId() == null || !Objects.equals(actor.memberId(), conversation.getAssignedMemberId())
+        ) {
+            throw new ApiException(
+                org.springframework.http.HttpStatus.FORBIDDEN,
+                "Assuma a conversa antes de alterar mensagens"
+            );
+        }
+        if (Set.of("CLOSED", "RESOLVED", "CANCELLED").contains(conversation.operationalStatus().name())) {
             throw ApiException.conflict("Reabra o atendimento");
         }
         var channel = channels.requireActive(message.getChannelId());

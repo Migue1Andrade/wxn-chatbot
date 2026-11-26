@@ -22,6 +22,8 @@ angular.module('wxn.core').factory('SocketService', [
       'kanban.metrics.updated': 'wxn:kanban:metrics',
       'channel.connection.changed': 'wxn:channel:changed',
       'notification.created': 'wxn:notification:created',
+      'notification.removed': 'wxn:notification:changed',
+      'notification.changed': 'wxn:notification:changed',
       'conversation.team.updated': 'wxn:team:updated',
       [BackendEvents.ACCESS_REVOKED]: chats.ACCESS_REVOKED,
       [BackendEvents.CONVERSATION_CREATED]: chats.CREATED,

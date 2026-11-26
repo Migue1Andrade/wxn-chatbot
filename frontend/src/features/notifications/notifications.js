@@ -8,7 +8,8 @@ angular
     'ApiClientService',
     'EventBusService',
     'AccountSessionState',
-    function ($q, api, bus, account) {
+    'AppEvents',
+    function ($q, api, bus, account, app) {
       const state = { items: [], count: 0, error: '', page: 0 };
       let owner;
       let generation = 0;
@@ -60,11 +61,15 @@ angular
           });
         return pending;
       }
-      bus.on('wxn:notification:created', () => load(false, true));
+      const refresh = () => load(false, true);
+      bus.on('wxn:notification:created', refresh);
+      bus.on('wxn:notification:changed', refresh);
+      bus.on(app.SOCKET_CONNECTED, refresh);
       return {
         state,
         load,
         open: (row) => bus.emit('wxn:notification:open', row),
+        claim: (row) => api.post('/notifications/' + row.id + '/claim', {}).finally(refresh),
         read: (row) =>
           api
             .patch('/notifications/' + row.id + '/read', {})
@@ -163,6 +168,29 @@ angular
                 }
               });
           };
+          vm.claim = () => {
+            if (vm.busy || vm.selected?.type !== 'CONVERSATION_AVAILABLE') {
+              return;
+            }
+            const selected = vm.selected;
+            vm.busy = true;
+            vm.error = '';
+            center
+              .claim(selected)
+              .then((conversation) => {
+                vm.go('/', { conversation: conversation.id });
+              })
+              .catch((error) => {
+                if (vm.selected === selected) {
+                  vm.error = [404, 409].includes(error.status)
+                    ? 'Esta conversa já foi assumida ou saiu da fila.'
+                    : error.userMessage || 'Não foi possível assumir a conversa.';
+                }
+              })
+              .finally(() => {
+                vm.busy = false;
+              });
+          };
           vm.complete = () => {
             if (vm.busy || !vm.task) {
               return;
@@ -195,6 +223,18 @@ angular
             }
           };
           document.addEventListener('click', outside);
+          const offRows = $scope.$watchCollection(
+            () => vm.state.items,
+            (items) => {
+              if (
+                !vm.busy &&
+                vm.selected?.type === 'CONVERSATION_AVAILABLE' &&
+                !items.some((row) => row.id === vm.selected.id)
+              ) {
+                vm.back();
+              }
+            },
+          );
           const off = $scope.$on('$routeChangeSuccess', vm.close);
           const offOpen = bus.on('wxn:notification:open', (row) => {
             vm.open = true;
@@ -204,6 +244,7 @@ angular
             $timeout.cancel(focusTimer);
             epoch++;
             off();
+            offRows();
             offOpen();
             document.removeEventListener('click', outside);
           });

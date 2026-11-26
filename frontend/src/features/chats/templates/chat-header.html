@@ -21,8 +21,11 @@
           <path d="M7 3H4a1 1 0 0 0-1 1c0 9 8 17 17 17a1 1 0 0 0 1-1v-3l-5-2-2 2a14 14 0 0 1-7-7l2-2-2-5Z" />
         </svg>
         <span>
-          {{$ctrl.channelName}} · {{$ctrl.conversation.status === 'CLOSED' ? 'Finalizado' :
-          ($ctrl.conversation.status === 'IN_PROGRESS' ? $ctrl.responsibleName() : 'Aguardando atendimento')}}
+          {{$ctrl.channelName}} · {{$ctrl.statusLabel($ctrl.conversation.status)}}
+          <span ng-if="$ctrl.waitingForReply($ctrl.conversation)">
+            · {{$ctrl.waitingForReply($ctrl.conversation)}}
+          </span>
+          <span ng-if="$ctrl.conversation.assignedMemberId">· {{$ctrl.responsibleName()}}</span>
         </span>
       </p>
     </div>
@@ -44,7 +47,20 @@
       type="button"
       class="details-button"
       ng-click="$ctrl.open('details')"
+      aria-label="Detalhes"
+      title="Detalhes da conversa"
     >
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <circle
+          cx="12"
+          cy="12"
+          r="9"
+        />
+        <path d="M12 11v5m0-8h.01" />
+      </svg>
       Detalhes
     </button>
     <button
@@ -88,7 +104,14 @@
       >
         <button
           type="button"
-          ng-if="$ctrl.conversation.status === 'PENDING'"
+          ng-if="$ctrl.canScheduleFollowUp()"
+          ng-click="$ctrl.scheduleFollowUp()"
+        >
+          Agendar retorno
+        </button>
+        <button
+          type="button"
+          ng-if="$ctrl.isAdmin && $ctrl.conversation.status === 'PENDING'"
           ng-disabled="$ctrl.operation.loading || !$ctrl.actor"
           ng-click="$ctrl.open('assume')"
         >
@@ -96,7 +119,7 @@
         </button>
         <button
           type="button"
-          ng-if="$ctrl.conversation.status !== 'CLOSED'"
+          ng-if="$ctrl.isAdmin && !$ctrl.isFinal()"
           ng-disabled="$ctrl.operation.loading || !$ctrl.actor"
           ng-click="$ctrl.open($ctrl.conversation.assignedMemberId ? 'transfer' : 'assign')"
         >
@@ -104,7 +127,15 @@
         </button>
         <button
           type="button"
-          ng-if="$ctrl.conversation.status !== 'CLOSED'"
+          ng-if="$ctrl.ownsConversation() && !$ctrl.isFinal()"
+          ng-disabled="$ctrl.operation.loading || !$ctrl.actor"
+          ng-click="$ctrl.open('resolve')"
+        >
+          Marcar como resolvida
+        </button>
+        <button
+          type="button"
+          ng-if="$ctrl.ownsConversation() && !$ctrl.isFinal()"
           ng-disabled="$ctrl.operation.loading || !$ctrl.actor"
           ng-click="$ctrl.open('close')"
         >
@@ -112,7 +143,7 @@
         </button>
         <button
           type="button"
-          ng-if="$ctrl.conversation.status === 'CLOSED'"
+          ng-if="$ctrl.canReopen()"
           ng-disabled="$ctrl.operation.loading || !$ctrl.actor"
           ng-click="$ctrl.open('reopen')"
         >
@@ -136,7 +167,7 @@
   </p>
 </header>
 <aside
-  ng-if="$ctrl.conversation.status === 'PENDING'"
+  ng-if="$ctrl.isAdmin && $ctrl.conversation.status === 'PENDING'"
   class="handoff-card"
   aria-label="Conversa aguardando atendimento"
 >

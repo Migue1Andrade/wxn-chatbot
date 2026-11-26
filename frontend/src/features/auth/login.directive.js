@@ -8,9 +8,28 @@ angular.module('wxn.core').directive('accountLogin', function () {
     template,
     controller: [
       'AccountSessionService',
+      'ApiClientService',
       '$location',
-      function (session, $location) {
+      function (session, api, $location) {
         this.form = {};
+        this.requestReset = () => {
+          if (this.resetBusy || !this.resetEmail) {
+            return;
+          }
+          this.resetBusy = true;
+          this.resetError = '';
+          api
+            .post('/auth/password-reset/request', { email: this.resetEmail })
+            .then(() => {
+              this.resetSent = true;
+            })
+            .catch(() => {
+              this.resetError = 'Não foi possível enviar a solicitação. Tente novamente.';
+            })
+            .finally(() => {
+              this.resetBusy = false;
+            });
+        };
         this.login = () => {
           if (this.busy) {
             return;

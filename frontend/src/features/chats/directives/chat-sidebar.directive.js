@@ -13,7 +13,8 @@ angular.module('wxn.chats').directive('chatSidebar', function () {
       onSelect: '&',
       onRetry: '&',
       onFilter: '&',
-      onReader: '&',
+      onScope: '&',
+      isAdmin: '<',
       onResponsible: '&',
       onSearch: '&',
       onMore: '&',
@@ -22,10 +23,16 @@ angular.module('wxn.chats').directive('chatSidebar', function () {
       onReconnect: '&',
     },
     controller: function () {
-      this.$doCheck = () => {
-        this.readerId = this.member.member?.id || null;
-      };
-      this.memberName = (id) => this.member.members.find((m) => m.id === id)?.name || 'Não atribuído';
+      this.scopeFilter = (scope) => (scope === undefined ? this.state.scope : this.onScope({ scope }));
+      this.statusFilter = (filter) => (filter === undefined ? this.state.filter : this.onFilter({ filter }));
+      this.availableFilters = () =>
+        this.filters.filter(
+          (filter) => filter.value !== 'unassigned' || (this.isAdmin && this.state.scope === 'all'),
+        );
+      this.memberName = (id) =>
+        id == null
+          ? 'Não atribuído'
+          : this.member.members.find((m) => m.id === id)?.name || 'Responsável #' + id;
     },
     controllerAs: '$ctrl',
     template,

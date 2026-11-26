@@ -42,7 +42,7 @@ public class UserNotification {
     }
 
     public void read() {
-        if (readAt == null) {
+        if (readAt == null && !"CONVERSATION_AVAILABLE".equals(type)) {
             readAt = Instant.now();
         }
     }

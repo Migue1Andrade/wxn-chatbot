@@ -21,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class UserService {
 
+    public record Authenticated(UserDtos.Response user, long credentialVersion) {}
+
     private final UserRepository repository;
     private final MemberRepository members;
     private final DepartmentService departments;
@@ -293,7 +295,7 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public UserDtos.Response authenticate(String username, String password) {
+    public Authenticated authenticate(String username, String password) {
         User user =
             username == null ? null : repository.findByUsernameIgnoreCase(username.trim()).orElse(null);
         String hash =
@@ -314,6 +316,18 @@ public class UserService {
                 "Usuário ou senha inválidos, ou conta indisponível"
             );
         }
-        return UserMapper.response(user, member(user.getId()));
+        return new Authenticated(
+            UserMapper.response(user, member(user.getId())),
+            user.getCredentialVersion()
+        );
+    }
+
+    public void resetPassword(Long userId, String newPassword) {
+        User user = repository
+            .lockById(userId)
+            .orElseThrow(() -> ApiException.notFound("Conta não encontrada"));
+        String encoded = password(newPassword, newPassword, user.getCpf());
+        user.resetPassword(encoded);
+        repository.flush();
     }
 }

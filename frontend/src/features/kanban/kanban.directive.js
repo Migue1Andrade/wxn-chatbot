@@ -1,4 +1,5 @@
 import angular from 'angular';
+import { visibleConversationStatus, waitingForReply } from '../chats/conversation-filters.js';
 import { operationalEventLabel } from '../chats/operational-event-label.js';
 import template from './kanban.html?raw';
 angular
@@ -48,7 +49,6 @@ angular
           vm.columns = [
             ['PENDING', 'Aguardando triagem'],
             ['IN_PROGRESS', 'Em atendimento'],
-            ['WAITING_CUSTOMER', 'Aguardando cliente'],
             ['RESOLVED', 'Resolvidos'],
             ['CLOSED', 'Encerrados'],
           ].map(([status, name]) => ({ status, name, items: [], total: 0, page: 0 }));
@@ -61,18 +61,23 @@ angular
             COMPLETED: 'SLA concluído',
           };
           vm.priorities = { LOW: 'Baixa', NORMAL: 'Normal', HIGH: 'Alta', URGENT: 'Urgente' };
-          vm.filters = {
+          const defaultFilters = {
             search: '',
             priority: '',
             assignedMemberId: '',
             unassigned: false,
             sort: 'ATTENTION',
-            ...$location.search(),
+            channelId: '',
+            sla: '',
           };
+          vm.filters = { ...defaultFilters, ...$location.search() };
           vm.layout = 'board';
-          vm.mobileStatus = 'PENDING';
+          vm.mobileStatus = '';
           vm.visibleCount = () => vm.columns.reduce((sum, column) => sum + column.items.length, 0);
-          vm.statusName = (status) => vm.columns.find((column) => column.status === status)?.name || status;
+          vm.totalCount = () => vm.columns.reduce((sum, column) => sum + column.total, 0);
+          vm.statusName = (status) =>
+            vm.columns.find((column) => column.status === visibleConversationStatus(status))?.name || status;
+          vm.waitingForReply = waitingForReply;
           vm.views = [];
           vm.members = [];
           vm.channels = [];
@@ -151,6 +156,12 @@ angular
                         return;
                       }
                       Object.assign(column, result, { items: result.items });
+                      const refreshed = result.items.find(
+                        (item) => item.conversation.id === vm.detail?.conversation.id,
+                      );
+                      if (refreshed) {
+                        vm.detail.conversation = refreshed.conversation;
+                      }
                     });
                   })
                   .concat([
@@ -196,19 +207,36 @@ angular
             searchTimer = $timeout(vm.load, 300);
           };
           vm.clear = () => {
-            vm.filters = {
-              search: '',
-              priority: '',
-              assignedMemberId: '',
-              unassigned: false,
-              sort: 'ATTENTION',
-            };
+            vm.filters = { ...defaultFilters };
+            vm.selectedView = '';
+            vm.load();
+          };
+          vm.queueScope = () => {
+            if (vm.filters.unassigned) {
+              return 'unassigned';
+            }
+            if (vm.actor() && String(vm.filters.assignedMemberId) === String(vm.actor())) {
+              return 'mine';
+            }
+            return vm.filters.assignedMemberId ? 'member' : 'all';
+          };
+          vm.selectQueue = (scope) => {
+            vm.filters.assignedMemberId = scope === 'mine' ? String(vm.actor()) : '';
+            vm.filters.unassigned = scope === 'unassigned';
+            vm.selectedView = '';
+            vm.load();
+          };
+          vm.selectResponsible = () => {
+            vm.filters.unassigned = false;
+            vm.load();
+          };
+          vm.toggleSla = (sla) => {
+            vm.filters.sla = vm.filters.sla === sla ? '' : sla;
             vm.load();
           };
           vm.open = (card) => {
             vm.detail = card;
             vm.targetMember = card.conversation.assignedMemberId;
-            vm.targetStatus = card.conversation.status;
             vm.targetPriority = card.priority;
             vm.history = [];
             const id = card.conversation.id;
@@ -247,20 +275,47 @@ angular
                 vm.busy = false;
               });
           }
+          const activeActions = {
+            IN_PROGRESS: [
+              ['RESOLVED', 'Marcar como resolvido'],
+              ['CLOSED', 'Encerrar'],
+            ],
+            RESOLVED: [['IN_PROGRESS', 'Reabrir atendimento']],
+            CLOSED: [['IN_PROGRESS', 'Reabrir atendimento']],
+          };
+          vm.statusActions = (card) => {
+            const conversation = card.conversation;
+            return vm.actor() &&
+              vm.actor() === conversation.assignedMemberId &&
+              !conversation.botSessionEndedAt &&
+              conversation.status !== 'CANCELLED'
+              ? activeActions[visibleConversationStatus(conversation.status)] || []
+              : [];
+          };
           vm.move = (card, status) => {
-            if (vm.busy || status === card.conversation.status) {
+            if (vm.busy || status === visibleConversationStatus(card.conversation.status)) {
               return;
             }
-            if (!vm.actor()) {
-              vm.error = 'Sua conta precisa de um Member HUMAN ativo para registrar a operação.';
+            const action = vm.statusActions(card).find(([target]) => target === status);
+            if (!action) {
+              vm.error = 'A mudança depende do responsável e da situação atual do atendimento.';
               return;
             }
-            vm.confirmation = { card, status };
+            vm.confirmation = { card, status, label: action[1] };
           };
           vm.confirmMove = () => {
             const { card, status } = vm.confirmation;
             vm.confirmation = null;
             mutate(service.status(card, status, vm.actor()));
+          };
+          vm.canAssume = () =>
+            vm.actor() &&
+            vm.detail?.conversation.status === 'PENDING' &&
+            !vm.detail.conversation.assignedMemberId;
+          vm.assume = () => {
+            if (vm.canAssume() && !vm.busy) {
+              mutate(service.assume(vm.detail, vm.actor()));
+            }
           };
           vm.changePriority = () => mutate(service.priority(vm.detail, vm.targetPriority));
           vm.assign = () => {
@@ -297,7 +352,7 @@ angular
             }
             try {
               const config = JSON.parse(view.configuration);
-              vm.filters = { ...config.filters };
+              vm.filters = { ...defaultFilters, ...config.filters };
               vm.layout = config.layout === 'list' ? 'list' : 'board';
               vm.load();
             } catch {
@@ -331,6 +386,7 @@ angular
             chats.REOPENED,
             messages.RECEIVED,
             messages.SENT,
+            messages.STATUS_UPDATED,
             app.SOCKET_CONNECTED,
           ].map((name) => bus.on(name, schedule));
           const clock = $interval(() => {
@@ -415,10 +471,14 @@ angular
   .directive('kanbanDrag', function () {
     return {
       restrict: 'A',
-      scope: { kanbanDrag: '<' },
+      scope: { kanbanDrag: '<', kanbanDraggable: '<' },
       link(scope, element) {
-        element.attr('draggable', 'true');
+        scope.$watch('kanbanDraggable', (enabled) => element.attr('draggable', String(Boolean(enabled))));
         const drag = (event) => {
+          if (!scope.kanbanDraggable) {
+            event.preventDefault();
+            return;
+          }
           event.dataTransfer.setData('application/wxn-card', JSON.stringify(scope.kanbanDrag));
           event.dataTransfer.effectAllowed = 'move';
         };

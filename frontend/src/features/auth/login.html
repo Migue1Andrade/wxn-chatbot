@@ -1,11 +1,36 @@
-<main class="login-page flex min-h-screen items-center justify-center bg-slate-50 px-6 text-slate-800">
+<main class="login-page">
+  <section
+    class="login-showcase"
+    aria-label="Atendimento WXN"
+  >
+    <div
+      class="login-mark"
+      aria-hidden="true"
+    >
+      W
+    </div>
+    <p class="login-eyebrow">ATENDIMENTO CONECTADO</p>
+    <h1>Conversas melhores começam por aqui.</h1>
+    <p>Organize contatos, acompanhe cada solicitação e mantenha sua equipe alinhada em um só lugar.</p>
+    <div
+      class="login-showcase-art"
+      aria-hidden="true"
+    >
+      <span>✦</span>
+      <i></i>
+      <b></b>
+    </div>
+  </section>
   <form
     name="loginForm"
     ng-submit="loginForm.$valid && vm.login()"
-    class="w-full max-w-sm space-y-5 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
+    class="login-card"
   >
-    <div class="workspace-brand">W</div>
-    <h1 class="text-2xl font-semibold">Entrar na WXN</h1>
+    <div class="login-card-heading">
+      <p class="login-eyebrow">BEM-VINDO DE VOLTA</p>
+      <h2>Entrar na WXN</h2>
+      <p>Acesse seu espaço de atendimento.</p>
+    </div>
     <p
       ng-if="vm.error"
       role="alert"
@@ -43,5 +68,55 @@
     >
       {{vm.busy ? 'Entrando…' : 'Entrar'}}
     </button>
+    <button
+      type="button"
+      class="login-link"
+      ng-click="vm.showReset = !vm.showReset"
+      ng-if="!vm.showReset"
+    >
+      Esqueci minha senha
+    </button>
+    <section
+      class="reset-request"
+      ng-if="vm.showReset"
+      aria-label="Solicitar redefinição de senha"
+    >
+      <form
+        name="resetRequestForm"
+        ng-submit="resetRequestForm.$valid && vm.requestReset()"
+      >
+        <label for="reset-email">E-mail cadastrado</label>
+        <input
+          id="reset-email"
+          type="email"
+          name="email"
+          ng-model="vm.resetEmail"
+          autocomplete="email"
+          required
+          class="login-input"
+        />
+        <p
+          ng-if="vm.resetSent"
+          class="login-success"
+          role="status"
+        >
+          Se o endereço estiver cadastrado, você receberá um link para redefinir a senha.
+        </p>
+        <p
+          ng-if="vm.resetError"
+          role="alert"
+          class="login-error"
+        >
+          {{vm.resetError}}
+        </p>
+        <button
+          type="submit"
+          ng-disabled="vm.resetBusy || resetRequestForm.$invalid"
+          class="login-submit"
+        >
+          {{vm.resetBusy ? 'Enviando…' : 'Enviar link'}}
+        </button>
+      </form>
+    </section>
   </form>
 </main>

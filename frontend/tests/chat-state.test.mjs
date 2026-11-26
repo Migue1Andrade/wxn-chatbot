@@ -2,7 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { matchesConversation } from '../src/features/chats/conversation-filters.js';
+import {
+  isConversationFinal,
+  matchesConversation,
+  queryParameters,
+  waitingForReply,
+} from '../src/features/chats/conversation-filters.js';
 
 // Register the actual factory without requiring AngularJS's browser DOM in Node.
 function createStore() {
@@ -73,4 +78,52 @@ test('punctuation-only search does not match every phone but still matches liter
     true,
   );
   assert.equal(matchesConversation(row, { filter: 'all', search: '+55 (81) 99999-9999' }), true);
+});
+
+test('personal inbox keeps ownership and status filters independent', () => {
+  const mine = { ...conversation(), assignedMemberId: 7, status: 'IN_PROGRESS' };
+  const other = { ...conversation('two'), assignedMemberId: 9, status: 'IN_PROGRESS' };
+  const state = { scope: 'mine', filter: 'active', readerId: 7, responsibleId: 9, search: '' };
+  assert.equal(queryParameters(state).assignedMemberId, 7);
+  assert.equal(queryParameters(state).status, 'IN_PROGRESS');
+  assert.equal(matchesConversation(mine, state), true);
+  assert.equal(matchesConversation(other, state), false);
+  assert.equal(matchesConversation({ ...mine, status: 'CLOSED' }, state), false);
+  const all = { ...state, scope: 'all', responsibleId: null };
+  assert.equal(matchesConversation(mine, all), true);
+  assert.equal(matchesConversation(other, all), true);
+});
+
+test('cancelled sessions appear under closed and block sending', () => {
+  const state = { scope: 'all', filter: 'closed', search: '' };
+  const cancelled = { ...conversation(), status: 'CANCELLED' };
+  assert.equal(queryParameters(state).status, 'CLOSED');
+  assert.equal(matchesConversation(cancelled, state), true);
+  assert.equal(matchesConversation({ ...cancelled, status: 'RESOLVED' }, state), false);
+  assert.equal(isConversationFinal(cancelled.status), true);
+});
+
+test('waiting label follows the latest direction within an active conversation', () => {
+  const earlier = '2026-11-25T10:00:00Z';
+  const later = '2026-11-25T10:01:00Z';
+  assert.equal(
+    waitingForReply({ status: 'IN_PROGRESS', lastInboundAt: later, lastOutboundAt: earlier }),
+    'Aguardando o atendente',
+  );
+  assert.equal(
+    waitingForReply({ status: 'WAITING_CUSTOMER', lastInboundAt: earlier, lastOutboundAt: later }),
+    'Aguardando o cliente',
+  );
+  assert.equal(waitingForReply({ status: 'CLOSED', lastOutboundAt: later }), '');
+  assert.equal(waitingForReply({ status: 'IN_PROGRESS' }), '');
+  assert.equal(
+    waitingForReply({
+      status: 'IN_PROGRESS',
+      lastInboundAt: later,
+      lastOutboundAt: later,
+      lastMessageAt: later,
+      lastMessageDirection: 'OUTBOUND',
+    }),
+    'Aguardando o cliente',
+  );
 });

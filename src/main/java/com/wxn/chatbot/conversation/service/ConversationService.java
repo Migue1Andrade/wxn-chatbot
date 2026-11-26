@@ -9,7 +9,9 @@ import com.wxn.chatbot.conversation.repository.ConversationRepository;
 import com.wxn.chatbot.message.document.Message;
 import com.wxn.chatbot.whatsapp.entity.WhatsAppChannel;
 import com.wxn.chatbot.whatsapp.model.*;
+import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Objects;
 import org.bson.types.ObjectId;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.PageRequest;
@@ -20,6 +22,7 @@ public class ConversationService {
 
     private static final int MAX_REOPEN_ATTEMPTS = 8;
     private static final int PREVIEW_LENGTH = 160;
+    private static final java.util.concurrent.locks.ReentrantLock[] INDIVIDUAL_LOCKS = locks();
     private final ConversationWriteCoordinator writes;
     private final com.wxn.chatbot.contact.ContactRegistry contacts;
     private final ConversationRepository repository;
@@ -65,15 +68,58 @@ public class ConversationService {
 
     public Conversation individual(WhatsAppChannel channel, String phone) {
         String key = "individual:" + phone;
-        Conversation conversation = repository
-            .findByChannelIdAndConversationKey(channel.getId(), key)
-            .orElseGet(() -> create(channel, phone, key));
-        if (conversation.getContactId() == null) {
-            var contactId = contacts.resolve(channel.getId(), phone);
-            repository.linkContact(conversation.getId(), contactId);
-            conversation.setContactId(contactId);
+        var lock = INDIVIDUAL_LOCKS[
+            Math.floorMod(Objects.hash(channel.getId(), phone), INDIVIDUAL_LOCKS.length)
+        ];
+        lock.lock();
+        try {
+            Conversation conversation = repository
+                .findByChannelIdAndConversationKey(channel.getId(), key)
+                .orElseGet(() -> create(channel, phone, key));
+            if (conversation.getContactId() == null) {
+                var contactId = contacts.resolve(channel.getId(), phone);
+                repository.linkContact(conversation.getId(), contactId);
+                conversation.setContactId(contactId);
+            }
+            return conversation;
+        } finally {
+            lock.unlock();
         }
-        return conversation;
+    }
+
+    private static java.util.concurrent.locks.ReentrantLock[] locks() {
+        var locks = new java.util.concurrent.locks.ReentrantLock[256];
+        java.util.Arrays.setAll(locks, ignored -> new java.util.concurrent.locks.ReentrantLock());
+        return locks;
+    }
+
+    public int updateBotWarning(Conversation conversation, OffsetDateTime warnedAt, Long botId) {
+        return repository.updateBotWarning(
+            conversation.getId(),
+            conversation.getLastInboundAt(),
+            warnedAt,
+            botId
+        );
+    }
+
+    public int updateBotConfirmation(Conversation conversation, OffsetDateTime confirmedAt, Long botId) {
+        return repository.updateBotConfirmation(
+            conversation.getId(),
+            conversation.getLastInboundAt(),
+            confirmedAt,
+            botId
+        );
+    }
+
+    public int resetBotWarning(Conversation conversation, Long botId) {
+        return repository.resetBotWarning(conversation.getId(), conversation.getLastInboundAt(), botId);
+    }
+
+    public List<Conversation> activeBotSessions(Long botId) {
+        return repository.findByAssignedMemberIdAndStatusIn(
+            botId,
+            List.of(ConversationStatus.IN_PROGRESS.name(), ConversationStatus.WAITING_CUSTOMER.name())
+        );
     }
 
     private Conversation create(WhatsAppChannel channel, String phone, String key) {
@@ -204,7 +250,13 @@ public class ConversationService {
             preview = preview.substring(0, PREVIEW_LENGTH);
         }
         repository
-            .updateActivity(conversation.getId(), message.getCreatedAt(), message.getId(), preview)
+            .updateActivity(
+                conversation.getId(),
+                message.getCreatedAt(),
+                message.getId(),
+                preview,
+                message.getDirection()
+            )
             .ifPresent(updated ->
                 events.publish(
                     ConversationEventTypes.CONVERSATION_UPDATED,

@@ -22,9 +22,11 @@ public class TaskController {
     public java.util.List<TaskService.Response> list(
         HttpServletRequest r,
         @RequestParam(defaultValue = "0") int page,
-        @RequestParam(required = false) String status
+        @RequestParam(required = false) String status,
+        @RequestParam(required = false) String type,
+        @RequestParam(required = false) String period
     ) {
-        return service.list(sessions.require(r.getSession(false)), page, status);
+        return service.list(sessions.require(r.getSession(false)), page, status, type, period);
     }
 
     @GetMapping("/{id}")

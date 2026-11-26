@@ -1,4 +1,5 @@
 import angular from 'angular';
+import { isConversationFinal } from '../chats/conversation-filters.js';
 import { AsyncState } from '../../core/state/async-state.js';
 
 angular.module('wxn.messages').factory('MessageSendingService', [
@@ -20,7 +21,7 @@ angular.module('wxn.messages').factory('MessageSendingService', [
           if (state.loading) {
             return;
           }
-          if (!member || conversation.status === 'CLOSED' || !conversation.channelId) {
+          if (!member || isConversationFinal(conversation.status) || !conversation.channelId) {
             state.fail(
               new Error(
                 !member
@@ -28,6 +29,10 @@ angular.module('wxn.messages').factory('MessageSendingService', [
                   : 'Reabra o atendimento e confirme o canal antes de enviar.',
               ),
             );
+            return;
+          }
+          if (conversation.assignedMemberId !== member.id) {
+            state.fail(new Error('Assuma a conversa antes de responder.'));
             return;
           }
           const text = content?.trim();

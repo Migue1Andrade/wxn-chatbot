@@ -103,11 +103,70 @@ public class ConversationOperationsImpl implements ConversationOperations {
             );
     }
 
+    @Override
+    public int updateBotWarning(
+        ObjectId id,
+        OffsetDateTime lastInboundAt,
+        OffsetDateTime warnedAt,
+        Long botId
+    ) {
+        return (int) mongo
+            .updateFirst(
+                scope(id).addCriteria(
+                    Criteria.where("lastInboundAt")
+                        .is(lastInboundAt)
+                        .and("assignedMemberId")
+                        .is(botId)
+                        .and("botInactivityWarnedAt")
+                        .is(null)
+                ),
+                new Update().set("botInactivityWarnedAt", warnedAt),
+                Conversation.class
+            )
+            .getModifiedCount();
+    }
+
+    @Override
+    public int updateBotConfirmation(
+        ObjectId id,
+        OffsetDateTime lastInboundAt,
+        OffsetDateTime confirmedAt,
+        Long botId
+    ) {
+        Update update =
+            confirmedAt == null
+                ? new Update().unset("botResolutionPendingAt")
+                : new Update().set("botResolutionPendingAt", confirmedAt);
+        return (int) mongo
+            .updateFirst(
+                scope(id).addCriteria(
+                    Criteria.where("lastInboundAt").is(lastInboundAt).and("assignedMemberId").is(botId)
+                ),
+                update,
+                Conversation.class
+            )
+            .getModifiedCount();
+    }
+
+    @Override
+    public int resetBotWarning(ObjectId id, OffsetDateTime lastInboundAt, Long botId) {
+        return (int) mongo
+            .updateFirst(
+                scope(id).addCriteria(
+                    Criteria.where("lastInboundAt").is(lastInboundAt).and("assignedMemberId").is(botId)
+                ),
+                new Update().unset("botInactivityWarnedAt"),
+                Conversation.class
+            )
+            .getModifiedCount();
+    }
+
     public Optional<Conversation> updateActivity(
         ObjectId id,
         OffsetDateTime messageAt,
         ObjectId messageId,
-        String preview
+        String preview,
+        String direction
     ) {
         Criteria newerMessage = new Criteria().orOperator(
             Criteria.where("lastMessageAt").lt(messageAt),
@@ -128,6 +187,7 @@ public class ConversationOperationsImpl implements ConversationOperations {
                     .set("lastMessageAt", messageAt)
                     .set("lastMessageId", messageId)
                     .set("lastMessagePreview", preview)
+                    .set("lastMessageDirection", direction)
                     .inc("version", 1),
                 FindAndModifyOptions.options().returnNew(true),
                 Conversation.class
@@ -152,6 +212,21 @@ public class ConversationOperationsImpl implements ConversationOperations {
             .max("updatedAt", activity.getCreatedAt())
             .set("version", expectedVersion + 1)
             .push("pendingActivities", activity);
+        if (
+            activity.getEvent() ==
+                com.wxn.chatbot.conversation.model.ConversationActivityType.BOT_CONFIRMED_RESOLUTION ||
+            activity.getEvent() ==
+                com.wxn.chatbot.conversation.model.ConversationActivityType.BOT_INACTIVITY_CANCELLED
+        ) {
+            update
+                .set("botSessionEndedAt", activity.getCreatedAt())
+                .unset("botResolutionPendingAt")
+                .unset("botInactivityWarnedAt")
+                .set(
+                    "conversationKey",
+                    current.getConversationKey() + ":archived:" + current.getId().toHexString()
+                );
+        }
         if (
             status == ConversationStatus.RESOLVED ||
             status == ConversationStatus.CLOSED ||
@@ -216,12 +291,14 @@ public class ConversationOperationsImpl implements ConversationOperations {
         List<Criteria> conditions = new ArrayList<>();
 
         if (status == ConversationStatus.PENDING || status == ConversationStatus.IN_PROGRESS) {
-            conditions.add(Criteria.where("status").nin("CLOSED", "RESOLVED", "WAITING_CUSTOMER"));
+            conditions.add(Criteria.where("status").nin("CLOSED", "RESOLVED", "CANCELLED"));
             conditions.add(
                 status == ConversationStatus.PENDING
                     ? Criteria.where("assignedMemberId").is(null)
                     : Criteria.where("assignedMemberId").ne(null)
             );
+        } else if (status == ConversationStatus.CLOSED) {
+            conditions.add(Criteria.where("status").in("CLOSED", "CANCELLED"));
         } else if (status != null) {
             conditions.add(Criteria.where("status").is(status.name()));
         }

@@ -60,6 +60,31 @@ public class ConversationActivityService {
                 repository.findByEventKey(activity.getEventKey()).orElseThrow(() -> duplicate);
             }
             if (
+                activity.getEvent() == ConversationActivityType.BOT_HANDOFF_TO_QUEUE &&
+                conversations
+                    .findById(conversation.getId())
+                    .filter(
+                        current ->
+                            current.getAssignedMemberId() == null &&
+                            current.operationalStatus() ==
+                                com.wxn.chatbot.conversation.model.ConversationStatus.PENDING
+                    )
+                    .isPresent()
+            ) {
+                var recipients = members
+                    .activeSupportHumans()
+                    .stream()
+                    .map(com.wxn.chatbot.member.entity.Member::getUserId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .toList();
+                notifications.offerConversation(
+                    conversation.getId().toHexString(),
+                    activity.getEventKey(),
+                    recipients
+                );
+            }
+            if (
                 activity.getNewMemberId() != null &&
                 java.util.Set.of(
                     ConversationActivityType.MEMBER_ASSIGNED,
@@ -67,6 +92,7 @@ public class ConversationActivityService {
                     ConversationActivityType.MEMBER_TRANSFERRED
                 ).contains(activity.getEvent())
             ) {
+                notifications.dismissConversation(conversation.getId().toHexString());
                 members
                     .findById(activity.getNewMemberId())
                     .filter(member -> member.getUserId() != null)

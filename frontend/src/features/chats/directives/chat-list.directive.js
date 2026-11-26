@@ -12,6 +12,7 @@ angular.module('wxn.chats').directive('chatList', function () {
       unread: '<',
       onSelect: '&',
       memberName: '&',
+      showActiveOwner: '<',
       loading: '<',
       error: '<',
     },

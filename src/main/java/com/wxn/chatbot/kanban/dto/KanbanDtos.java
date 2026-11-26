@@ -13,7 +13,7 @@ public final class KanbanDtos {
         @Min(0) @Max(10000) Integer page,
         @Min(1) @Max(100) Integer size,
         @Size(max = 100) String search,
-        @Pattern(regexp = "PENDING|IN_PROGRESS|WAITING_CUSTOMER|RESOLVED|CLOSED") String status,
+        @Pattern(regexp = "PENDING|IN_PROGRESS|WAITING_CUSTOMER|RESOLVED|CLOSED|CANCELLED") String status,
         @Positive Long assignedMemberId,
         Boolean unassigned,
         @Pattern(regexp = "LOW|NORMAL|HIGH|URGENT") String priority,
@@ -39,6 +39,10 @@ public final class KanbanDtos {
 
     public record Group(String status, long count) {}
 
+    public record DayVolume(String date, long opened, long resolved) {}
+
+    public record ReplyAging(long under15, long between15And60, long over60) {}
+
     public record Metrics(
         long open,
         long unassigned,
@@ -48,7 +52,10 @@ public final class KanbanDtos {
         List<Group> groups,
         long slaAtRisk,
         long slaBreached,
-        String timezone
+        String timezone,
+        List<DayVolume> dailyVolume,
+        ReplyAging replyAging,
+        List<Card> longestWaiting
     ) {}
 
     public record Priority(

@@ -5,10 +5,16 @@ public enum ConversationStatus {
     IN_PROGRESS,
     WAITING_CUSTOMER,
     RESOLVED,
-    CLOSED;
+    CLOSED,
+    CANCELLED;
 
     public static ConversationStatus effective(String stored, Long assignedMemberId) {
-        if ("CLOSED".equals(stored) || "RESOLVED".equals(stored) || "WAITING_CUSTOMER".equals(stored)) {
+        if (
+            "CLOSED".equals(stored) ||
+            "RESOLVED".equals(stored) ||
+            "CANCELLED".equals(stored) ||
+            "WAITING_CUSTOMER".equals(stored)
+        ) {
             return valueOf(stored);
         }
         return assignedMemberId == null ? PENDING : IN_PROGRESS;

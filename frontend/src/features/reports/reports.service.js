@@ -4,11 +4,12 @@ angular.module('wxn.chats').factory('ReportsService', [
   'environment',
   function ($http, environment) {
     return {
-      exportConversations: () =>
+      exportConversations: (filters) =>
         $http
           .get(environment.apiBaseUrl + '/api/admin/analytics/conversations.csv', {
             responseType: 'blob',
             timeout: 120000,
+            params: filters,
           })
           .then((response) => response.data),
     };

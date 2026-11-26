@@ -45,19 +45,25 @@ Não há JWT, recuperação de senha, convites ou deploy nesta entrega.
 
 Endpoints:
 
-| Método     | Caminho               | Uso                                                                  |
-| ---------- | --------------------- | -------------------------------------------------------------------- |
-| GET        | `/api/auth/session`   | Identidade resumida e token CSRF; cria sessão anônima antes do login |
-| POST       | `/api/auth/login`     | Username e senha; retorna identidade resumida e novo token CSRF      |
-| POST       | `/api/auth/logout`    | Invalida a sessão                                                    |
-| GET, POST  | `/api/users`          | Listagem e cadastro por ADMIN                                        |
-| GET, PATCH | `/api/users/{id}`     | Consulta e edição por ADMIN                                          |
-| POST       | `/api/dev/users/seed` | Bootstrap manual local, exclusivamente dev                           |
+| Método     | Caminho                            | Uso                                                                  |
+| ---------- | ---------------------------------- | -------------------------------------------------------------------- |
+| GET        | `/api/auth/session`                | Identidade resumida e token CSRF; cria sessão anônima antes do login |
+| POST       | `/api/auth/login`                  | Username e senha; retorna identidade resumida e novo token CSRF      |
+| POST       | `/api/auth/logout`                 | Invalida a sessão                                                    |
+| POST       | `/api/auth/password-reset/request` | Solicita link; resposta genérica para qualquer e-mail                |
+| POST       | `/api/auth/password-reset/confirm` | Consome token e atualiza senha uma única vez                         |
+| GET, POST  | `/api/users`                       | Listagem e cadastro por ADMIN                                        |
+| GET, PATCH | `/api/users/{id}`                  | Consulta e edição por ADMIN                                          |
+| POST       | `/api/dev/users/seed`              | Bootstrap manual local, exclusivamente dev                           |
 
 O frontend inclui cookies com `withCredentials` e o header `X-CSRF-Token`. Clientes manuais precisam
 preservar o cookie recebido em `/api/auth/session`, enviar seu `csrfToken` no login e usar o novo token
 retornado pelo login nas próximas escritas. O cookie não contém CPF, senha, perfil ou dados pessoais.
 A identidade é consultada no backend a cada requisição; perfil ou status antigos não são confiados ao cliente.
+
+O login registra a geração persistida de credencial. Após redefinição de senha, requisições HTTP e sessões
+STOMP verificam essa geração e a conexão antiga é fechada antes de novas entregas. Sessões anteriores à
+migration são aceitas somente enquanto a geração da conta for zero.
 
 O cadastro HUMAN antigo em `/api/members` foi substituído pelo cadastro completo em `/api/users`.
 `POST /api/members` permanece somente para BOT; a edição de dados de HUMAN e de seus setores ocorre

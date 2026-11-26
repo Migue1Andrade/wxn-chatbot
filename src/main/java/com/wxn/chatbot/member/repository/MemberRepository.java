@@ -43,4 +43,16 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
         "select distinct m from Member m where m.type = com.wxn.chatbot.member.entity.MemberType.HUMAN and m.deletedAt is null order by m.id"
     )
     List<Member> directoryHumans();
+
+    @Query(
+        """
+        select m from Member m, User u
+        where u.id = m.userId and m.deletedAt is null and u.deletedAt is null
+          and m.type = com.wxn.chatbot.member.entity.MemberType.HUMAN
+          and m.status = com.wxn.chatbot.common.ActiveStatus.ACTIVE
+          and u.accountStatus = com.wxn.chatbot.common.ActiveStatus.ACTIVE
+        order by case when u.role = com.wxn.chatbot.user.entity.UserRole.ATTENDANT then 0 else 1 end, m.id
+        """
+    )
+    List<Member> activeSupportHumans();
 }

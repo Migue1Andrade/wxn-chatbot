@@ -22,6 +22,7 @@ public class EvolutionWebhookService {
     private final MessageService messages;
     private final EvolutionWebhookMapper mapper;
     private final WebhookInboxRepository inbox;
+    private final org.springframework.beans.factory.ObjectProvider<com.wxn.chatbot.openbot.OpenBotSupportService> support;
 
     public EvolutionWebhookService(
         EvolutionConfiguration config,
@@ -30,7 +31,8 @@ public class EvolutionWebhookService {
         ChannelService channels,
         MessageService messages,
         EvolutionWebhookMapper mapper,
-        WebhookInboxRepository inbox
+        WebhookInboxRepository inbox,
+        org.springframework.beans.factory.ObjectProvider<com.wxn.chatbot.openbot.OpenBotSupportService> support
     ) {
         this.config = config;
         this.client = client;
@@ -39,6 +41,7 @@ public class EvolutionWebhookService {
         this.messages = messages;
         this.mapper = mapper;
         this.inbox = inbox;
+        this.support = support;
     }
 
     public void receive(String secret, JsonNode body) {
@@ -125,6 +128,7 @@ public class EvolutionWebhookService {
             messages.echo(channel, incoming, true);
         } else {
             messages.receive(channel, incoming, false);
+            support.ifAvailable(service -> service.dispatch(channel, incoming));
         }
     }
 

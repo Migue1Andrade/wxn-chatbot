@@ -1,5 +1,5 @@
 import angular from 'angular';
-import { ConversationFilters, queryParameters } from './conversation-filters.js';
+import { ConversationFilters, isConversationFinal, queryParameters } from './conversation-filters.js';
 
 angular.module('wxn.chats').controller('ChatsController', [
   '$location',
@@ -16,6 +16,7 @@ angular.module('wxn.chats').controller('ChatsController', [
   'MemberEvents',
   'DevMemberContextService',
   'ChannelsService',
+  'AccountSessionState',
   function (
     $location,
     $scope,
@@ -31,12 +32,20 @@ angular.module('wxn.chats').controller('ChatsController', [
     memberEvents,
     memberContext,
     channels,
+    account,
   ) {
     const vm = this;
     vm.state = store.state;
     vm.socket = socket.state;
     vm.member = memberContext.state;
+    vm.ownsSelected = () =>
+      Boolean(vm.member.member?.id && vm.state.selected?.assignedMemberId === vm.member.member.id);
+    vm.isFinal = (conversation) => isConversationFinal(conversation?.status);
     vm.query = '';
+    vm.isAdmin = account.user?.role === 'ADMIN';
+    vm.state.scope = vm.isAdmin ? 'all' : 'mine';
+    vm.state.filter = 'all';
+    vm.state.responsibleId = null;
     vm.filters = ConversationFilters;
     vm.channels = [];
     vm.mobileOpen = false;
@@ -75,7 +84,26 @@ angular.module('wxn.chats').controller('ChatsController', [
       store.resetQuery();
       vm.refresh();
     }
+    vm.changeScope = (scope) => {
+      if (!vm.isAdmin || scope === vm.state.scope) {
+        return;
+      }
+      vm.state.scope = scope;
+      vm.state.filter = 'all';
+      vm.state.responsibleId = null;
+      resetQuery();
+    };
     vm.changeFilter = (filter) => {
+      if (filter === 'mine') {
+        vm.changeScope('mine');
+        return;
+      }
+      if (filter === 'unassigned' && !vm.isAdmin) {
+        return;
+      }
+      if (filter === 'unassigned') {
+        vm.state.scope = 'all';
+      }
       vm.state.filter = filter;
       if (filter === 'mine' || filter === 'unassigned') {
         vm.state.responsibleId = null;
@@ -93,12 +121,11 @@ angular.module('wxn.chats').controller('ChatsController', [
       }, 300);
     };
     vm.changeResponsible = () => resetQuery();
-    vm.changeReader = (id) => memberContext.choose(id);
     vm.refresh = function () {
       if (destroyed) {
         return;
       }
-      if (vm.state.filter === 'mine' && !vm.state.readerId) {
+      if (vm.state.scope === 'mine' && !vm.state.readerId) {
         vm.state.loading = false;
         store.replace([], store.revision());
         return;
@@ -218,6 +245,7 @@ angular.module('wxn.chats').controller('ChatsController', [
       bus.on(chatEvents.READ_UPDATED, (event) => store.read(event.payload)),
       bus.on(messageEvents.RECEIVED, scheduleRefresh),
       bus.on(messageEvents.SENT, scheduleRefresh),
+      bus.on(messageEvents.STATUS_UPDATED, scheduleRefresh),
       bus.on(memberEvents.UPDATED, readerChanged),
       bus.on(appEvents.SOCKET_CONNECTED, () => {
         if (vm.state.selected) {

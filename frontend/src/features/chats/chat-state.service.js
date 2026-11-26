@@ -10,6 +10,7 @@ angular.module('wxn.chats').factory('ChatStateService', function () {
     loadingMore: false,
     error: null,
     filter: 'all',
+    scope: 'all',
     responsibleId: null,
     search: '',
     readerId: null,

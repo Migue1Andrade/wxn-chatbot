@@ -45,7 +45,8 @@ public class TeamService {
             e.pinned(),
             e.createdAt(),
             e.updatedAt(),
-            e.version()
+            e.version(),
+            e.color() == null ? "SAGE" : e.color()
         );
     }
 
@@ -89,7 +90,8 @@ public class TeamService {
             null,
             0,
             List.of(),
-            input.operationId()
+            input.operationId(),
+            "NOTE".equals(kind) ? (input.color() == null ? "SAGE" : input.color()) : "SAGE"
         );
         try {
             entry = repository.insert(entry);
@@ -133,6 +135,7 @@ public class TeamService {
             input.expectedVersion(),
             input.content().trim(),
             input.pinned(),
+            input.color(),
             delete,
             actor.id()
         );

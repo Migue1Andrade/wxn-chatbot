@@ -8,6 +8,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 public interface ConversationActivityRepository extends MongoRepository<ConversationActivity, ObjectId> {
+    boolean existsByConversationIdAndEvent(
+        ObjectId conversationId,
+        com.wxn.chatbot.conversation.model.ConversationActivityType event
+    );
     List<ConversationActivity> findByConversationIdOrderByCreatedAtDescIdDesc(
         ObjectId conversationId,
         Pageable pageable

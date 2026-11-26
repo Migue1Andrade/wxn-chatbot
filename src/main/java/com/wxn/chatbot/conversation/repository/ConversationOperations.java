@@ -21,8 +21,22 @@ public interface ConversationOperations {
         ObjectId id,
         OffsetDateTime messageAt,
         ObjectId messageId,
-        String preview
+        String preview,
+        String direction
     );
+    int updateBotWarning(
+        org.bson.types.ObjectId id,
+        java.time.OffsetDateTime lastInboundAt,
+        java.time.OffsetDateTime warnedAt,
+        Long botId
+    );
+    int updateBotConfirmation(
+        org.bson.types.ObjectId id,
+        java.time.OffsetDateTime lastInboundAt,
+        java.time.OffsetDateTime confirmedAt,
+        Long botId
+    );
+    int resetBotWarning(org.bson.types.ObjectId id, java.time.OffsetDateTime lastInboundAt, Long botId);
     Optional<Conversation> changeState(
         Conversation current,
         long expectedVersion,

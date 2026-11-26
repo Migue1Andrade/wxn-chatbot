@@ -154,6 +154,40 @@ public class MessageService {
         return sendOperation(conversationId, request, null, null);
     }
 
+    public <T> T withChannelWriteLock(Long channelId, java.util.function.Supplier<T> operation) {
+        var lock = acquireChannel(channelId);
+        try {
+            return operation.get();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public NormalizedMessage sendAsAssignedBot(String conversationId, MessageDtos.Send request) {
+        var lock = acquireChannel(request.channelId());
+        try {
+            return conversations.withWriteLock(conversationId, () -> {
+                var current = conversations.require(conversationId);
+                var actor = members.requireActive(request.memberId());
+                if (
+                    actor.getType() != com.wxn.chatbot.member.entity.MemberType.BOT ||
+                    !Objects.equals(current.getAssignedMemberId(), actor.getId()) ||
+                    current.operationalStatus() == ConversationStatus.CLOSED ||
+                    current.operationalStatus() == ConversationStatus.RESOLVED ||
+                    current.operationalStatus() == ConversationStatus.CANCELLED
+                ) {
+                    throw new ApiException(
+                        org.springframework.http.HttpStatus.GONE,
+                        "Conversa já transferida ou encerrada"
+                    );
+                }
+                return performSend(conversationId, request, null, null);
+            });
+        } finally {
+            lock.unlock();
+        }
+    }
+
     public NormalizedMessage sendOperation(
         String conversationId,
         MessageDtos.Send request,
@@ -184,8 +218,17 @@ public class MessageService {
         Message forwarded
     ) {
         Conversation c = conversations.require(conversationId);
-        if (c.operationalStatus() == ConversationStatus.CLOSED) {
+        if (
+            Set.of(
+                ConversationStatus.CLOSED,
+                ConversationStatus.RESOLVED,
+                ConversationStatus.CANCELLED
+            ).contains(c.operationalStatus())
+        ) {
             throw ApiException.conflict("Reabra o atendimento antes de enviar mensagens");
+        }
+        if (request.actorUserId() != null) {
+            members.requireMessageActor(request.actorUserId(), request.memberId(), c.getAssignedMemberId());
         }
         WhatsAppChannel channel = channels.requireActive(request.channelId());
         if (!Objects.equals(c.getChannelId(), channel.getId()) || c.getProvider() != channel.getProvider()) {
@@ -207,9 +250,6 @@ public class MessageService {
             if (existing.isPresent()) {
                 return repeated(existing.get(), c, request, reply, forwarded);
             }
-        }
-        if (request.actorUserId() != null) {
-            members.requireMessageActor(request.actorUserId(), request.memberId(), c.getAssignedMemberId());
         }
         Message m = MessageMapper.outbound(
             channel,

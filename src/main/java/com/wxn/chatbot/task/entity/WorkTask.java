@@ -44,7 +44,11 @@ public class WorkTask {
         String status,
         String priority
     ) {
-        if (!java.util.Objects.equals(due, dueAt) || !java.util.Objects.equals(assigned, assignedUserId)) {
+        if (
+            !java.util.Objects.equals(due, dueAt) ||
+            !java.util.Objects.equals(assigned, assignedUserId) ||
+            ("OPEN".equals(status) && !"OPEN".equals(this.status))
+        ) {
             overdueNotified = false;
         }
         this.type = type;

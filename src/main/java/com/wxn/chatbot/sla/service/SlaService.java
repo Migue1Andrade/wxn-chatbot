@@ -88,7 +88,7 @@ public class SlaService {
         if (!p.enabled()) {
             return new Result("NOT_CONFIGURED", null, List.of());
         }
-        if (Set.of("CLOSED", "RESOLVED").contains(c.operationalStatus().name())) {
+        if (Set.of("CLOSED", "RESOLVED", "CANCELLED").contains(c.operationalStatus().name())) {
             return new Result("COMPLETED", null, List.of());
         }
         List<Instant> deadlines = new ArrayList<>();

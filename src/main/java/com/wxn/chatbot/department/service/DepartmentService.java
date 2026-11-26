@@ -85,7 +85,7 @@ public class DepartmentService {
         }
         if (
             request.status() == com.wxn.chatbot.common.ActiveStatus.INACTIVE &&
-            conversations.existsByDepartmentIdAndStatusNotIn(id, List.of("CLOSED", "RESOLVED"))
+            conversations.existsByDepartmentIdAndStatusNotIn(id, List.of("CLOSED", "RESOLVED", "CANCELLED"))
         ) {
             throw ApiException.conflict("Não é possível inativar um setor com atendimentos ativos");
         }

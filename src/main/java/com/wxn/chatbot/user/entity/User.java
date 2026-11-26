@@ -47,6 +47,9 @@ public class User {
     @Column(name = "password_hash", length = 100)
     private String passwordHash;
 
+    @Column(name = "credential_version", nullable = false)
+    private long credentialVersion;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "role", length = 20, nullable = false)
     private UserRole role;
@@ -108,6 +111,16 @@ public class User {
             throw new IllegalStateException("Senha já cadastrada");
         }
         this.passwordHash = passwordHash;
+    }
+
+    public long getCredentialVersion() {
+        return credentialVersion;
+    }
+
+    public void resetPassword(String passwordHash) {
+        this.passwordHash = passwordHash;
+        this.credentialVersion++;
+        this.updatedAt = OffsetDateTime.now();
     }
 
     public User(String name, String phone) {

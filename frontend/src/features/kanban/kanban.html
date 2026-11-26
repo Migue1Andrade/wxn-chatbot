@@ -1,11 +1,10 @@
 <div class="flex min-h-screen bg-slate-50 text-slate-800">
   <management-navigation></management-navigation>
-  <main class="product-page kb-workspace kb-refined">
+  <main class="product-page kb-workspace kb-refined kb-operational">
     <header class="kb-heading">
       <div>
-        <p class="kb-eyebrow">CENTRAL DE OPERAÇÕES</p>
         <h1>Central de atendimentos</h1>
-        <p>Acompanhe sua operação em tempo real.</p>
+        <p>Organize a fila e acompanhe a responsabilidade por cada atendimento.</p>
       </div>
       <div class="kb-actions">
         <button
@@ -38,50 +37,86 @@
         <strong>{{vm.metrics.open == null ? '—' : vm.metrics.open}}</strong>
         <small>Todos os canais</small>
       </div>
-      <button ng-click="vm.filters.unassigned = true; vm.load()">
+      <div>
         <span>Sem responsável</span>
         <strong>{{vm.metrics.unassigned == null ? '—' : vm.metrics.unassigned}}</strong>
-        <small>Precisa de atribuição</small>
-      </button>
+        <small>Conversas para atribuir</small>
+      </div>
       <div>
-        <span>Esperando a equipe</span>
+        <span>Aguardando a equipe</span>
         <strong>{{vm.metrics.waitingForAgent == null ? '—' : vm.metrics.waitingForAgent}}</strong>
-        <small>Mensagem externa pendente</small>
+        <small>Resposta pendente</small>
       </div>
       <div>
-        <span>Resolvidos hoje</span>
-        <strong>{{vm.metrics.resolvedToday == null ? '—' : vm.metrics.resolvedToday}}</strong>
-        <small>Dia em {{vm.metrics.timezone}}</small>
-      </div>
-      <div>
-        <span>Resolução média</span>
-        <strong>
-          {{vm.metrics.averageResolutionMinutes == null ? '—' : (vm.metrics.averageResolutionMinutes |
-          number:0) + ' min'}}
-        </strong>
-        <small>Ciclos registrados · todo o histórico</small>
+        <span>Prazos vencidos</span>
+        <strong>{{vm.metrics.slaBreached == null ? '—' : vm.metrics.slaBreached}}</strong>
+        <small>Atendimentos fora do prazo</small>
       </div>
     </section>
-    <div class="kb-quick-views">
-      <button
-        ng-click="vm.filters.sla = 'AT_RISK'; vm.load()"
-        class="kb-risk-filter"
-        ng-class="{'is-active':vm.filters.sla === 'AT_RISK'}"
-      >
-        SLA em risco · {{vm.metrics.slaAtRisk || 0}}
-      </button>
-      <button
-        ng-click="vm.filters.sla = 'BREACHED'; vm.load()"
-        class="kb-breach-filter"
-        ng-class="{'is-active':vm.filters.sla === 'BREACHED'}"
-      >
-        SLA violado · {{vm.metrics.slaBreached || 0}}
-      </button>
-    </div>
+    <section
+      class="kb-longest"
+      aria-labelledby="kb-longest-title"
+      ng-if="vm.metrics"
+    >
+      <header>
+        <h2 id="kb-longest-title">Há mais tempo sem resposta</h2>
+        <span>Todos os canais</span>
+      </header>
+      <ol ng-if="vm.metrics.longestWaiting.length">
+        <li ng-repeat="card in vm.metrics.longestWaiting track by card.conversation.id">
+          <button
+            type="button"
+            class="kb-longest-card"
+            ng-class="card.sla"
+            ng-click="vm.open(card)"
+          >
+            <span class="kb-longest-name">
+              <strong>
+                {{card.conversation.displayName || card.conversation.contactPhone || 'Conversa'}}
+              </strong>
+              <small>{{vm.memberName(card.conversation.assignedMemberId)}}</small>
+            </span>
+            <span class="kb-longest-status">
+              <strong>{{vm.duration(card.waitingForAgentSince)}}</strong>
+              <small>{{vm.slaLabels[card.sla]}}</small>
+            </span>
+          </button>
+        </li>
+      </ol>
+      <p ng-if="!vm.metrics.longestWaiting.length">Nenhum atendimento aguarda resposta.</p>
+    </section>
     <section
       class="kb-controls"
       aria-label="Filtros do quadro"
     >
+      <div
+        class="kb-queue-scopes"
+        role="group"
+        aria-label="Fila de atendimentos"
+      >
+        <button
+          type="button"
+          ng-click="vm.selectQueue('all')"
+          aria-pressed="{{vm.queueScope() === 'all'}}"
+        >
+          Todos
+        </button>
+        <button
+          type="button"
+          ng-click="vm.selectQueue('mine')"
+          ng-if="vm.actor()"
+          aria-pressed="{{vm.queueScope() === 'mine'}}"
+        >
+          Meus atendimentos
+        </button>
+        <button
+          type="button"
+          ng-click="vm.selectQueue('unassigned')"
+          aria-pressed="{{vm.queueScope() === 'unassigned'}}"
+        >
+          Sem responsável
+        </button>
+      </div>
       <div class="kb-control-row">
         <label class="kb-search">
           <svg
@@ -140,57 +175,85 @@
           </button>
         </div>
       </div>
-      <div class="kb-control-row">
-        <select
-          aria-label="Prioridade"
-          ng-model="vm.filters.priority"
-          ng-change="vm.load()"
-        >
-          <option value="">Todas as prioridades</option>
-          <option
-            ng-repeat="(key,label) in vm.priorities"
-            value="{{key}}"
-          >
-            {{label}}
-          </option>
-        </select>
-        <select
-          aria-label="Responsável"
-          ng-model="vm.filters.assignedMemberId"
-          ng-change="vm.load()"
-        >
-          <option value="">Todos os responsáveis</option>
-          <option
-            ng-repeat="member in vm.members track by member.id"
-            value="{{member.id}}"
-          >
-            {{member.name}}
-          </option>
-        </select>
-        <select
-          aria-label="Ordenação"
-          ng-model="vm.filters.sort"
-          ng-change="vm.load()"
-        >
-          <option value="ATTENTION">Precisam de atenção primeiro</option>
-          <option value="RECENT">Atividade recente</option>
-          <option value="OLDEST">Abertura mais antiga</option>
-        </select>
-        <label class="kb-check">
-          <input
-            type="checkbox"
-            ng-model="vm.filters.unassigned"
+      <details class="kb-extra-filters">
+        <summary>Filtros e ordenação</summary>
+        <div class="kb-control-row">
+          <select
+            aria-label="Prioridade"
+            ng-model="vm.filters.priority"
             ng-change="vm.load()"
-          />
-          Sem responsável
-        </label>
-        <button
-          class="kb-clear"
-          ng-click="vm.clear()"
-        >
-          Limpar filtros
-        </button>
-        <span class="kb-actor">{{vm.visibleCount()}} carregados · filtros por etapa</span>
+          >
+            <option value="">Todas as prioridades</option>
+            <option
+              ng-repeat="(key,label) in vm.priorities"
+              value="{{key}}"
+            >
+              {{label}}
+            </option>
+          </select>
+          <select
+            aria-label="Responsável"
+            ng-model="vm.filters.assignedMemberId"
+            ng-change="vm.selectResponsible()"
+          >
+            <option value="">Todos os responsáveis</option>
+            <option
+              ng-repeat="member in vm.members track by member.id"
+              value="{{member.id}}"
+            >
+              {{member.name}}
+            </option>
+          </select>
+          <select
+            aria-label="Ordenação"
+            ng-model="vm.filters.sort"
+            ng-change="vm.load()"
+          >
+            <option value="ATTENTION">Precisam de atenção primeiro</option>
+            <option value="RECENT">Atividade recente</option>
+            <option value="OLDEST">Abertura mais antiga</option>
+          </select>
+          <select
+            aria-label="Canal"
+            ng-model="vm.filters.channelId"
+            ng-change="vm.load()"
+          >
+            <option value="">Todos os canais</option>
+            <option
+              ng-repeat="channel in vm.channels track by channel.id"
+              value="{{channel.id}}"
+            >
+              {{channel.name}}
+            </option>
+          </select>
+          <button
+            class="kb-clear"
+            ng-click="vm.clear()"
+          >
+            Limpar filtros
+          </button>
+        </div>
+      </details>
+      <div class="kb-queue-summary">
+        <span>{{vm.visibleCount()}} de {{vm.totalCount()}} atendimentos</span>
+        <div class="kb-quick-views">
+          <button
+            type="button"
+            class="kb-risk-filter"
+            ng-click="vm.toggleSla('AT_RISK')"
+            aria-pressed="{{vm.filters.sla === 'AT_RISK'}}"
+          >
+            Prazo em risco
+          </button>
+          <button
+            type="button"
+            class="kb-breach-filter"
+            ng-click="vm.toggleSla('BREACHED')"
+            aria-pressed="{{vm.filters.sla === 'BREACHED'}}"
+          >
+            Prazo vencido
+          </button>
+        </div>
       </div>
     </section>
     <p
@@ -244,12 +307,20 @@
             ng-class="{'kb-card-breached':card.sla === 'BREACHED', 'kb-card-urgent':card.priority === 'URGENT'}"
             ng-repeat="card in column.items track by card.conversation.id"
             kanban-drag="card"
+            kanban-draggable="vm.statusActions(card).length"
             ng-click="vm.open(card)"
           >
             <div class="kb-card-top">
-              <span>#{{card.conversation.id.slice(-6).toUpperCase()}}</span>
+              <time
+                ng-if="card.conversation.lastMessageAt"
+                datetime="{{card.conversation.lastMessageAt}}"
+              >
+                {{card.conversation.lastMessageAt | date:'dd/MM · HH:mm'}}
+              </time>
+              <span ng-if="!card.conversation.lastMessageAt">Sem mensagens</span>
               <span
                 class="kb-priority"
+                ng-if="card.priority === 'HIGH' || card.priority === 'URGENT'"
                 ng-class="card.priority"
               >
                 {{vm.priorities[card.priority]}}
@@ -260,12 +331,19 @@
             <div class="kb-card-signals">
               <span
                 class="kb-department"
+                ng-if="vm.waitingForReply(card.conversation)"
+              >
+                {{vm.waitingForReply(card.conversation)}}
+              </span>
+              <span
+                class="kb-department"
                 ng-if="vm.departmentName(card.departmentId)"
               >
                 {{vm.departmentName(card.departmentId)}}
               </span>
               <span
                 class="kb-sla"
+                ng-if="card.sla === 'AT_RISK' || card.sla === 'BREACHED'"
                 ng-class="card.sla"
               >
                 {{vm.slaLabels[card.sla]}}
@@ -284,12 +362,15 @@
               </span>
             </div>
             <footer>
-              <span ng-if="card.conversation.status !== 'RESOLVED' && card.conversation.status !== 'CLOSED'">
+              <span
+                ng-if="card.conversation.status !== 'RESOLVED' && card.conversation.status !== 'CLOSED' && card.conversation.status !== 'CANCELLED'"
+              >
                 {{card.waitingForAgentSince ? 'Cliente espera há ' : 'Aberto há
                 '}}{{vm.duration(card.waitingForAgentSince || card.conversation.createdAt)}}
               </span>
               <span ng-if="card.conversation.status === 'RESOLVED'">{{vm.resolution(card)}}</span>
               <span ng-if="card.conversation.status === 'CLOSED'">Atendimento encerrado</span>
+              <span ng-if="card.conversation.status === 'CANCELLED'">Encerrado por inatividade</span>
               <span
                 class="kb-attention"
                 ng-if="card.attentionScore"
@@ -380,6 +461,15 @@
     </p>
     <section class="kb-drawer-section">
       <h3>Responsabilidade</h3>
+      <button
+        type="button"
+        class="kb-primary"
+        ng-if="vm.canAssume()"
+        ng-click="vm.assume()"
+        ng-disabled="vm.busy"
+      >
+        Assumir atendimento
+      </button>
       <label>
         Responsável
         <select
@@ -398,19 +488,29 @@
     </section>
     <section class="kb-drawer-section">
       <h3>Situação</h3>
-      <label>
-        Status
-        <select
-          ng-model="vm.targetStatus"
-          ng-options="column.status as column.name for column in vm.columns"
-        ></select>
-      </label>
-      <button
-        ng-disabled="vm.busy"
-        ng-click="vm.move(vm.detail, vm.targetStatus)"
+      <p class="kb-current-status">
+        {{vm.statusName(vm.detail.conversation.status)}}
+        <span ng-if="vm.waitingForReply(vm.detail.conversation)">
+          · {{vm.waitingForReply(vm.detail.conversation)}}
+        </span>
+      </p>
+      <div
+        class="kb-actions"
+        ng-if="vm.statusActions(vm.detail).length"
       >
-        Alterar status
-      </button>
+        <button
+          type="button"
+          ng-repeat="action in vm.statusActions(vm.detail) track by action[0]"
+          ng-disabled="vm.busy"
+          ng-click="vm.move(vm.detail, action[0])"
+        >
+          {{action[1]}}
+        </button>
+      </div>
+      <p ng-if="!vm.statusActions(vm.detail).length">
+        {{vm.detail.conversation.botSessionEndedAt || vm.detail.conversation.status === 'CANCELLED' ? 'Sessão
+        do bot encerrada.' : 'O responsável pelo atendimento pode alterar o status.'}}
+      </p>
       <label>
         Prioridade
         <select
@@ -449,7 +549,7 @@
     busy="vm.busy"
     on-close="vm.confirmation = null"
   >
-    <p>Confirmar mudança do atendimento para {{vm.statusName(vm.confirmation.status)}}?</p>
+    <p>Confirma a ação “{{vm.confirmation.label}}”?</p>
     <p class="mt-2 text-sm text-slate-500">
       A alteração será registrada no histórico. Conflitos serão rejeitados pelo servidor.
     </p>

@@ -10,13 +10,15 @@ public final class TeamDtos {
 
     public record Create(
         @NotBlank @Size(max = 5000) String content,
-        @NotBlank @Pattern(regexp = "[a-zA-Z0-9_-]{16,100}") String operationId
+        @NotBlank @Pattern(regexp = "[a-zA-Z0-9_-]{16,100}") String operationId,
+        @Pattern(regexp = "SAGE|SKY|LAVENDER|PEACH|SUNSHINE|ROSE") String color
     ) {}
 
     public record Edit(
         @NotBlank @Size(max = 5000) String content,
         boolean pinned,
-        @Min(0) long expectedVersion
+        @Min(0) long expectedVersion,
+        @Pattern(regexp = "SAGE|SKY|LAVENDER|PEACH|SUNSHINE|ROSE") String color
     ) {}
 
     public record Entry(
@@ -29,7 +31,8 @@ public final class TeamDtos {
         boolean pinned,
         Instant createdAt,
         Instant updatedAt,
-        long version
+        long version,
+        String color
     ) {}
 
     public record Revision(String content, Long actorUserId, Instant at) {}

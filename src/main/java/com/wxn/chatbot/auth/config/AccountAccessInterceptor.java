@@ -36,6 +36,22 @@ public class AccountAccessInterceptor implements HandlerInterceptor {
         if ("OPTIONS".equals(request.getMethod()) || path.startsWith("/api/webhooks/")) {
             return true;
         }
+        if ("POST".equals(request.getMethod()) && path.equals("/api/openbot/support/replies")) {
+            if (!FrontendOrigins.allowed(origin, request.getHeader("Origin"))) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "Origem não permitida");
+            }
+            return true;
+        }
+        if (
+            "POST".equals(request.getMethod()) &&
+            (path.equals("/api/auth/password-reset/request") ||
+                path.equals("/api/auth/password-reset/confirm"))
+        ) {
+            if (!FrontendOrigins.allowed(origin, request.getHeader("Origin"))) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "Origem não permitida");
+            }
+            return true;
+        }
         if (path.startsWith("/api/bootstrap/whatsapp/")) {
             if ("GET".equals(request.getMethod()) || "HEAD".equals(request.getMethod())) {
                 return true;

@@ -44,7 +44,8 @@ class ZApiWebhookTest {
             mock(MessageLogService.class),
             inbox,
             operations,
-            mock(MessageMutationService.class)
+            mock(MessageMutationService.class),
+            org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class)
         );
     }
 

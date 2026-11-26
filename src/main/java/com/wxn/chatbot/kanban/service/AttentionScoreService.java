@@ -10,7 +10,7 @@ public class AttentionScoreService {
     public record Attention(int score, List<String> reasons) {}
 
     public Attention evaluate(Conversation c) {
-        if (Set.of("CLOSED", "RESOLVED").contains(c.operationalStatus().name())) {
+        if (Set.of("CLOSED", "RESOLVED", "CANCELLED").contains(c.operationalStatus().name())) {
             return new Attention(0, List.of());
         }
         int score = 0;

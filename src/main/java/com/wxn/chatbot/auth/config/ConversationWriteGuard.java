@@ -35,7 +35,7 @@ public class ConversationWriteGuard implements HandlerInterceptor {
         if (
             parts.length < 4 ||
             !Set.of("conversations", "messages").contains(parts[2]) ||
-            ("conversations".equals(parts[2]) && "read".equals(parts[4]))
+            (parts.length > 4 && "conversations".equals(parts[2]) && "read".equals(parts[4]))
         ) {
             return true;
         }

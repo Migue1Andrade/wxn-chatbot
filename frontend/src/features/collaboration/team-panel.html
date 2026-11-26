@@ -1,141 +1,252 @@
 <aside
   class="team-panel"
-  ng-class="{'is-collapsed': team.collapsed}"
+  ng-class="{'discussion-mode': team.tab === 'internal-messages'}"
   aria-label="Colaboração do atendimento"
 >
-  <header>
-    <button
-      type="button"
-      class="team-close"
-      ng-click="team.onClose()"
-      aria-label="Fechar painel da equipe"
-    >
-      ✕
-    </button>
-    <strong>Workspace da equipe</strong>
-    <button
-      type="button"
-      ng-click="team.collapsed = !team.collapsed"
-      aria-label="{{team.collapsed ? 'Expandir painel' : 'Recolher painel'}}"
-    >
-      {{team.collapsed ? '←' : '→'}}
-    </button>
-  </header>
-  <div ng-if="!team.collapsed">
-    <nav aria-label="Informações do atendimento">
+  <header class="team-panel-header">
+    <div class="team-heading">
+      <span
+        class="team-heading-mark"
+        aria-hidden="true"
+      >
+        ✳
+      </span>
+      <div>
+        <strong>Equipe</strong>
+        <small>Colaboração neste atendimento</small>
+      </div>
+    </div>
+    <div class="team-header-actions">
       <button
+        type="button"
+        ng-click="team.onClose()"
+        aria-label="Fechar painel da equipe"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </button>
+    </div>
+  </header>
+  <div
+    class="team-panel-content"
+    ng-class="{'notes-mode': team.tab === 'notes'}"
+  >
+    <nav
+      class="team-tabs"
+      aria-label="Colaboração"
+      role="tablist"
+    >
+      <button
+        type="button"
+        role="tab"
         ng-class="{'is-active': team.tab === 'notes'}"
+        aria-selected="{{team.tab === 'notes'}}"
         ng-click="team.changeTab('notes')"
       >
         Notas
+        <span>privadas</span>
       </button>
       <button
+        type="button"
+        role="tab"
         ng-class="{'is-active': team.tab === 'internal-messages'}"
+        aria-selected="{{team.tab === 'internal-messages'}}"
         ng-click="team.changeTab('internal-messages')"
       >
-        Discussão interna
+        Discussão
+        <span>interna</span>
       </button>
     </nav>
-    <a
-      href="#!/tasks?conversation={{team.conversation.id}}"
-      class="mt-4 inline-block text-xs text-teal-700"
-    >
-      Criar atividade ↗
-    </a>
-    <p class="team-private">Somente equipe · não enviado ao WhatsApp</p>
+    <div class="team-privacy">
+      <span aria-hidden="true">♧</span>
+      Visível apenas para a equipe
+      <a href="#!/tasks?conversation={{team.conversation.id}}">Agendar retorno ↗</a>
+    </div>
     <p
-      ng-if="team.error"
-      role="alert"
-      class="team-error"
+      ng-if="team.draftState"
+      class="team-draft-status"
+      role="status"
     >
-      {{team.error}}
+      {{team.draftState}}
     </p>
-    <form ng-submit="team.save()">
-      <label class="sr-only">{{team.tab === 'notes' ? 'Anotação' : 'Mensagem interna'}}</label>
+    <p
+      ng-if="team.loadError"
+      class="team-error"
+      role="alert"
+    >
+      {{team.loadError}}
+    </p>
+    <button
+      ng-if="team.loadError"
+      type="button"
+      class="team-retry"
+      ng-click="team.retryLoad()"
+    >
+      Tentar carregar novamente
+    </button>
+    <p
+      ng-if="team.writeError"
+      class="team-error"
+      role="alert"
+    >
+      {{team.writeError}}
+    </p>
+    <button
+      ng-if="team.writeError"
+      type="button"
+      class="team-retry"
+      ng-click="team.retrySave()"
+    >
+      Tentar salvar novamente
+    </button>
+    <div
+      class="team-history"
+      aria-live="polite"
+    >
+      <p
+        ng-if="team.loading"
+        class="team-loading"
+        role="status"
+      >
+        Carregando colaboração…
+      </p>
+      <article
+        ng-repeat="entry in team.rows track by entry.id"
+        class="team-entry"
+        ng-class="['color-' + (entry.color || 'SAGE').toLowerCase(), {'is-pinned': entry.pinned, 'is-internal': team.tab === 'internal-messages', 'is-mine': entry.authorUserId === team.account.user.id}]"
+      >
+        <div
+          class="team-entry-avatar"
+          ng-if="team.tab === 'internal-messages'"
+          aria-hidden="true"
+        >
+          {{team.initials(entry.authorName)}}
+        </div>
+        <div class="team-entry-card">
+          <header>
+            <strong>{{entry.authorName}}</strong>
+            <time>{{entry.createdAt | date:'dd/MM/yyyy · HH:mm'}}</time>
+          </header>
+          <span
+            ng-if="entry.pinned"
+            class="team-pinned-label"
+          >
+            Fixada
+          </span>
+          <p>{{entry.content}}</p>
+          <footer class="team-entry-actions">
+            <button
+              type="button"
+              ng-if="team.canEdit(entry)"
+              ng-click="team.edit(entry)"
+            >
+              Editar
+            </button>
+            <button
+              type="button"
+              ng-if="team.canEdit(entry) && team.tab === 'notes'"
+              ng-click="team.pin(entry)"
+            >
+              {{entry.pinned ? 'Desafixar' : 'Fixar'}}
+            </button>
+            <button
+              type="button"
+              ng-if="team.canEdit(entry)"
+              ng-click="team.remove(entry)"
+            >
+              Excluir
+            </button>
+            <button
+              type="button"
+              ng-click="team.history(entry)"
+            >
+              Histórico
+            </button>
+          </footer>
+        </div>
+      </article>
+      <p
+        ng-if="!team.loading && !team.rows.length"
+        class="team-empty"
+      >
+        <span aria-hidden="true">{{team.tab === 'notes' ? '✎' : '◌'}}</span>
+        <strong>{{team.tab === 'notes' ? 'Ainda sem notas' : 'A conversa começa aqui'}}</strong>
+        <small>
+          {{team.tab === 'notes' ? 'Guarde aqui detalhes úteis para o próximo atendimento.' : 'Compartilhe
+          contexto com quem está cuidando desta conversa.'}}
+        </small>
+      </p>
+      <button
+        class="team-more"
+        ng-if="team.more"
+        ng-click="team.load(true)"
+        ng-disabled="team.loading"
+      >
+        Carregar mensagens anteriores
+      </button>
+    </div>
+    <form
+      class="team-composer"
+      ng-submit="team.save()"
+    >
+      <label for="team-composer">
+        {{team.tab === 'notes' ? (team.editing ? 'Editar nota' : 'Nova nota privada') : (team.editing ?
+        'Editar mensagem interna' : 'Mensagem para a equipe')}}
+      </label>
       <textarea
+        id="team-composer"
         ng-model="team.text"
         ng-change="team.changed()"
         maxlength="5000"
-        rows="4"
-        placeholder="{{team.tab === 'notes' ? 'Registre informações importantes…' : 'Converse com a equipe sobre este atendimento…'}}"
+        rows="3"
+        placeholder="{{team.tab === 'notes' ? 'Escreva um detalhe importante…' : 'Escreva uma mensagem interna…'}}"
         ng-disabled="team.busy"
+        aria-describedby="team-composer-hint"
       ></textarea>
-      <div class="team-form-actions">
+      <fieldset
+        ng-if="team.tab === 'notes'"
+        class="team-color-picker"
+      >
+        <legend>Cor da nota</legend>
         <button
-          ng-if="team.editing"
+          ng-repeat="color in team.colors"
           type="button"
-          ng-click="team.editing = null; team.text = ''"
+          ng-click="team.selectedColor = color.id"
+          ng-class="{'is-selected': team.selectedColor === color.id}"
+          ng-style="{'background-color': color.swatch}"
+          aria-label="{{color.name}}"
+          aria-pressed="{{team.selectedColor === color.id}}"
+          title="{{color.name}}"
         >
-          Cancelar edição
+          <span>{{color.name}}</span>
         </button>
+      </fieldset>
+      <div class="team-composer-footer">
+        <small id="team-composer-hint">
+          {{team.tab === 'notes' ? 'Privada · nunca enviada ao contato' : 'Somente a equipe verá esta
+          mensagem'}}
+        </small>
         <button
           type="submit"
           ng-disabled="team.busy || !team.text.trim()"
         >
-          {{team.busy ? 'Salvando…' : (team.editing ? 'Salvar alteração' : (team.tab === 'notes' ? 'Adicionar
-          nota' : 'Enviar internamente'))}}
+          {{team.busy ? 'Salvando…' : (team.editing ? 'Salvar' : (team.tab === 'notes' ? 'Adicionar nota' :
+          'Enviar'))}}
         </button>
       </div>
-    </form>
-    <p
-      ng-if="team.loading"
-      class="team-private"
-      role="status"
-    >
-      Carregando…
-    </p>
-    <article
-      ng-repeat="entry in team.rows track by entry.id"
-      class="team-entry"
-      ng-class="{'is-pinned':entry.pinned}"
-    >
-      <header>
-        <strong>{{entry.authorName}}</strong>
-        <time>{{entry.createdAt | date:'dd/MM HH:mm'}}</time>
-      </header>
-      <span
-        ng-if="entry.pinned"
-        class="team-private"
+      <button
+        ng-if="team.editing"
+        class="team-cancel-edit"
+        type="button"
+        ng-click="team.editing = null; team.text = ''"
       >
-        Fixada
-      </span>
-      <p>{{entry.content}}</p>
-      <footer>
-        <button
-          ng-if="team.canEdit(entry)"
-          ng-click="team.edit(entry)"
-        >
-          Editar
-        </button>
-        <button
-          ng-if="team.canEdit(entry) && team.tab === 'notes'"
-          ng-click="team.pin(entry)"
-        >
-          {{entry.pinned ? 'Desafixar' : 'Fixar'}}
-        </button>
-        <button
-          ng-if="team.canEdit(entry)"
-          ng-click="team.remove(entry)"
-        >
-          Excluir
-        </button>
-        <button ng-click="team.history(entry)">Histórico</button>
-      </footer>
-    </article>
-    <p
-      ng-if="!team.loading && !team.rows.length"
-      class="team-empty"
-    >
-      {{team.tab === 'notes' ? 'Nenhuma nota neste atendimento.' : 'Nenhuma mensagem interna.'}}
-    </p>
-    <button
-      class="team-more"
-      ng-if="team.more"
-      ng-click="team.load(true)"
-      ng-disabled="team.loading"
-    >
-      Carregar anteriores
-    </button>
+        Cancelar edição
+      </button>
+    </form>
   </div>
   <app-modal
     open="!!team.deleting"
@@ -158,10 +269,10 @@
   >
     <article
       ng-repeat="revision in team.revisions"
-      class="mb-4 border-b border-slate-100 pb-4"
+      class="team-revision"
     >
-      <small class="text-slate-400">{{revision.at | date:'dd/MM/yyyy HH:mm'}}</small>
-      <p class="whitespace-pre-wrap text-sm">{{revision.content}}</p>
+      <small>{{revision.at | date:'dd/MM/yyyy HH:mm'}}</small>
+      <p>{{revision.content}}</p>
     </article>
     <p ng-if="!team.revisions.length">Nenhuma edição registrada.</p>
   </app-modal>

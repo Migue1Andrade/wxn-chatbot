@@ -3,10 +3,12 @@ package com.wxn.chatbot.kanban.repository;
 import com.wxn.chatbot.common.ApiException;
 import com.wxn.chatbot.conversation.document.Conversation;
 import com.wxn.chatbot.kanban.dto.KanbanDtos.*;
+import java.time.Instant;
 import java.util.*;
 import java.util.regex.Pattern;
 import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.*;
 import org.springframework.data.mongodb.core.query.*;
 import org.springframework.stereotype.Repository;
@@ -27,12 +29,14 @@ public class KanbanRepository {
         if (f.status() != null && !f.status().isBlank()) {
             var status = com.wxn.chatbot.conversation.model.ConversationStatus.valueOf(f.status());
             if (status.name().equals("PENDING") || status.name().equals("IN_PROGRESS")) {
-                clauses.add(Criteria.where("status").nin("CLOSED", "RESOLVED", "WAITING_CUSTOMER"));
+                clauses.add(Criteria.where("status").nin("CLOSED", "RESOLVED", "CANCELLED"));
                 clauses.add(
                     status.name().equals("PENDING")
                         ? Criteria.where("assignedMemberId").is(null)
                         : Criteria.where("assignedMemberId").ne(null)
                 );
+            } else if (status.name().equals("CLOSED")) {
+                clauses.add(Criteria.where("status").in("CLOSED", "CANCELLED"));
             } else {
                 clauses.add(Criteria.where("status").is(status.name()));
             }
@@ -84,7 +88,7 @@ public class KanbanRepository {
     private List<Document> pipeline(Filter f) {
         var policy = sla.policy();
         var now = new java.util.Date();
-        Object closed = op("$in", "$status", List.of("CLOSED", "RESOLVED"));
+        Object closed = op("$in", "$status", List.of("CLOSED", "RESOLVED", "CANCELLED"));
         Object waiting = op(
             "$and",
             op("$ne", new Document("$ifNull", java.util.Arrays.asList("$waitingForAgentSince", null)), null),
@@ -224,6 +228,18 @@ public class KanbanRepository {
             .stream()
             .map(d -> mongo.getConverter().read(Conversation.class, d))
             .toList();
+    }
+
+    public List<Conversation> longestWaiting(Instant now) {
+        var query = Query.query(
+            Criteria.where("waitingForAgentSince")
+                .lte(Date.from(now))
+                .and("status")
+                .nin("CLOSED", "RESOLVED", "CANCELLED")
+        )
+            .with(Sort.by("waitingForAgentSince", "_id"))
+            .limit(3);
+        return mongo.find(query, Conversation.class);
     }
 
     public long count(Filter f) {

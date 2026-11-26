@@ -40,10 +40,24 @@ idempotência, auditoria e leituras por atendente permanecem separados por suas 
 
 ## Interface
 
-A sidebar é compartilhada entre todas as páginas. A página inicial é o chat, `#!/dashboard` apresenta
-um aviso de implementação futura e `#!/members` gerencia atendentes. `#!/settings` contém somente o
+A sidebar é compartilhada entre todas as páginas. A página inicial é o chat. O painel `#!/dashboard`
+exibe indicadores, o volume de entradas e resoluções dos últimos sete dias, o tempo de espera
+por resposta e atalhos para a fila do Kanban. `#!/members` gerencia atendentes. `#!/settings` contém somente o
 card Setores; a gestão fica em `#!/settings/departments`, com retorno ao hub.
 Atendentes HUMAN exigem pelo menos um setor; BOT não recebe setores. Veja [setores](docs/departments.md).
+
+Na tela Conversas, atendentes veem apenas as conversas atribuídas à própria conta. Administradores
+alternam entre **Todas as conversas** e **Minhas conversas** e podem filtrar a visão geral por
+responsável. Nas duas abas do administrador, conversas **Em atendimento** destacam quem está atendendo.
+Em **Em atendimento**, a interface indica quem deve responder pela última mensagem registrada.
+Encerramentos por inatividade aparecem em **Encerradas** junto dos demais encerramentos.
+No Kanban, o painel de espera destaca até três conversas abertas que aguardam resposta há mais tempo,
+com sinalização conforme o SLA configurado.
+
+No chat e no Kanban, o responsável pode resolver ou encerrar um atendimento ativo e reabrir
+seus atendimentos resolvidos ou encerrados manualmente. Sessões finalizadas pelo BOT ficam no
+histórico. Administradores podem acompanhar e atribuir conversas. Alterações de status exigem
+assumir a conversa.
 
 Para recuperar rapidamente o contexto das telas, preparar uma base completa e seguir um roteiro de
 demonstração, consulte o [guia de contexto e demonstração](docs/feature-tour.md).
@@ -76,7 +90,8 @@ WebSocket: `ws://localhost:4001/ws`. CONNECT exige `X-Dev-Api-Key`; SUBSCRIBE pe
 `/topic/conversations`. SEND de clientes é bloqueado, pois mensagens são enviadas por REST.
 Envelope: `eventId`, `type`, `conversationId`, `occurredAt`, `payload`. Os payloads são DTOs.
 
-Mock simula envio sem contatar um número real. Exemplo de entrada:
+Mock simula envio sem contatar um número real. O endpoint exige os perfis `dev,legacy`,
+uma sessão de administrador e um canal `MOCK`. Exemplo de entrada:
 
 ```json
 {
@@ -125,12 +140,31 @@ precisam de conclusão cadastral antes do login. Não execute reset para aplicar
 Com o backend atualizado, execute manualmente `node scripts/seed-local-users.mjs` para criar as duas
 contas de demonstração. O script preserva contas e senhas existentes e rejeita conflitos de identidade.
 Consulte [cadastro, autenticação, permissões e validação](docs/user-accounts.md).
+O fluxo de redefinição de senha, SMTP e Mailpit local está em [recuperação de senha](docs/password-reset.md).
 
 ## WhatsApp real com Evolution API
 
 A integração atual utiliza Evolution API `v2.3.7` com Baileys. A referência operacional,
 incluindo Docker, variáveis, webhook, QR Code, reconexão e limpeza local, está em
 [docs/whatsapp/evolution.md](docs/whatsapp/evolution.md).
+
+O piloto WXN Carros pode encaminhar conversas com BOT para a fila humana. A solicitação de
+atendimento cria alertas genéricos no sino; um atendente ou ADMIN com membro HUMAN ativo pode
+reivindicar pelo `POST /api/notifications/{id}/claim` (sessão + CSRF). A primeira atribuição vence,
+os outros alertas somem e apenas o responsável/ADMIN acessa o conteúdo. “Ler todas” preserva uma
+oferta disponível. Consulte a documentação Evolution para configuração e teste com canal MOCK.
+
+Atividades inclui Follow-ups vinculados a conversas e atribuídos por padrão ao criador. A API usa
+`POST /api/tasks` e `PATCH /api/tasks/{id}`; a listagem aceita `type=FOLLOW_UP`, `period=OVERDUE|TODAY|UPCOMING`,
+`status` e `page`. Os períodos usam o horário local de Recife e ordenam pelo prazo. O lembrete de vencimento
+é idempotente por prazo, inclui o título do retorno no sino e abre a conversa original conforme permissões.
+Reagendar ou concluir baixa o aviso pendente sem alterar status da conversa ou enviar WhatsApp.
+
+Com o piloto habilitado, sessões BOT avisam após 20 minutos sem nova mensagem e encerram como `CANCELLED`
+após 30 minutos. Respostas do agente podem definir `askResolution:true`; o backend só marca `RESOLVED` após
+confirmação positiva do cliente. O encerramento expõe `botSessionEndedAt` e permite uma nova conversa isolada
+para o mesmo canal e remetente. Consulte a [documentação Evolution](docs/whatsapp/evolution.md) para o callback
+e as limitações de armazenamento em memória.
 
 O fluxo real é `WhatsApp -> Evolution API -> Spring Boot -> MongoDB -> WebSocket -> AngularJS`.
 O QR Code é obtido do provider e nunca é simulado. As implementações antigas de Mock, Twilio e

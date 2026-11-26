@@ -9,6 +9,8 @@ import com.wxn.chatbot.user.entity.UserRole;
 import com.wxn.chatbot.user.service.UserService;
 import jakarta.validation.constraints.*;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.*;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -19,12 +21,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class TaskService {
 
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("America/Recife");
+
     public record Input(
         @NotBlank @Pattern(regexp = "TASK|FOLLOW_UP|REMINDER") String type,
         @NotBlank @Size(max = 200) String title,
         @Size(max = 5000) String description,
         String conversationId,
-        @NotNull @Positive Long assignedUserId,
+        @Positive Long assignedUserId,
         @NotNull Instant dueAt,
         @NotBlank @Pattern(regexp = "OPEN|COMPLETED|CANCELLED") String status,
         @NotBlank @Pattern(regexp = "LOW|NORMAL|HIGH|URGENT") String priority,
@@ -79,15 +83,52 @@ public class TaskService {
     }
 
     public List<Response> list(AccountSessions.Identity actor, int page, String status) {
+        return list(actor, page, status, null, null);
+    }
+
+    public List<Response> list(
+        AccountSessions.Identity actor,
+        int page,
+        String status,
+        String type,
+        String period
+    ) {
         if (
             page < 0 ||
             page > 10000 ||
-            (status != null && !Set.of("OPEN", "COMPLETED", "CANCELLED").contains(status))
+            (status != null && !Set.of("OPEN", "COMPLETED", "CANCELLED").contains(status)) ||
+            (type != null && !Set.of("TASK", "FOLLOW_UP", "REMINDER").contains(type)) ||
+            (period != null && !Set.of("OVERDUE", "TODAY", "UPCOMING").contains(period))
         ) {
             throw ApiException.badRequest("Filtro inválido");
         }
+        Instant from = Instant.parse("0001-01-01T00:00:00Z");
+        Instant to = Instant.parse("9999-12-31T23:59:59Z");
+        if (period != null) {
+            LocalDate today = LocalDate.now(BUSINESS_ZONE);
+            Instant startTomorrow = today.plusDays(1).atStartOfDay(BUSINESS_ZONE).toInstant();
+            if ("OVERDUE".equals(period)) {
+                to = Instant.now();
+                status = "OPEN";
+            } else if ("TODAY".equals(period)) {
+                from = Instant.now();
+                to = startTomorrow;
+                status = "OPEN";
+            } else {
+                from = startTomorrow;
+                status = "OPEN";
+            }
+        }
         return repository
-            .visible(actor.id(), actor.role() == UserRole.ADMIN, status, PageRequest.of(page, 30))
+            .visibleByPeriod(
+                actor.id(),
+                actor.role() == UserRole.ADMIN,
+                status == null ? "ANY" : status,
+                type == null ? "ANY" : type,
+                from,
+                to,
+                PageRequest.of(page, 30)
+            )
             .stream()
             .map(this::response)
             .toList();
@@ -104,10 +145,14 @@ public class TaskService {
     }
 
     public Response save(Long id, Input input, AccountSessions.Identity actor) {
-        if (actor.role() != UserRole.ADMIN && !Objects.equals(input.assignedUserId(), actor.id())) {
+        Long assignedUserId = input.assignedUserId() == null ? actor.id() : input.assignedUserId();
+        if (actor.role() != UserRole.ADMIN && !Objects.equals(assignedUserId, actor.id())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Atendente só gerencia suas atividades");
         }
-        users.requireActive(input.assignedUserId());
+        users.requireActive(assignedUserId);
+        if ("FOLLOW_UP".equals(input.type()) && input.conversationId() == null) {
+            throw ApiException.badRequest("Follow-up deve estar vinculado a uma conversa");
+        }
         var t =
             id == null
                 ? new WorkTask(actor.id(), input.conversationId())
@@ -130,24 +175,35 @@ public class TaskService {
             access.require(input.conversationId(), actor);
         }
         Long previous = t.getAssignedUserId();
+        Instant previousDueAt = t.getDueAt();
+        String previousStatus = t.getStatus();
         t.update(
             input.type(),
             input.title(),
             input.description(),
-            input.assignedUserId(),
+            assignedUserId,
             input.dueAt(),
             input.status(),
             input.priority()
         );
         repository.saveAndFlush(t);
-        if (!Objects.equals(previous, input.assignedUserId())) {
+        if (!Objects.equals(previous, assignedUserId)) {
             notifications.create(
-                input.assignedUserId(),
+                assignedUserId,
                 "TASK_ASSIGNED",
                 "Uma atividade foi atribuída a você",
                 "TASK",
                 t.getId().toString()
             );
+        }
+        if (
+            id != null &&
+            ("COMPLETED".equals(input.status()) ||
+                !Objects.equals(previousDueAt, input.dueAt()) ||
+                !Objects.equals(previousStatus, input.status()) ||
+                !Objects.equals(previous, assignedUserId))
+        ) {
+            notifications.dismissTaskOverdue(t.getId().toString(), previous);
         }
         return response(t);
     }
@@ -159,12 +215,17 @@ public class TaskService {
             Instant.now()
         )) {
             task.notified();
-            notifications.create(
+            String taskId = task.getId().toString();
+            String title = "FOLLOW_UP".equals(task.getType())
+                ? "Follow-up vencido: " + task.getTitle()
+                : "Uma atividade está vencida";
+            notifications.createOnce(
                 task.getAssignedUserId(),
                 "TASK_OVERDUE",
-                "Uma atividade está vencida",
+                title,
                 "TASK",
-                task.getId().toString()
+                taskId,
+                "task-overdue:" + taskId + ":" + task.getDueAt().toEpochMilli() + ":" + task.getVersion()
             );
         }
     }

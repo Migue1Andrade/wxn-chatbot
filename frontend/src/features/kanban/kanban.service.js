@@ -6,6 +6,7 @@ angular.module('wxn.chats').factory('KanbanService', [
     return {
       page: (filters) => api.get(root + '/conversations', filters),
       metrics: () => api.get(root + '/metrics'),
+      overview: (filters) => api.get('/admin/analytics/overview', filters),
       details: (id) => api.get(root + '/conversations/' + id),
       views: () => api.get(root + '/views'),
       saveView: (name, configuration) =>
@@ -16,8 +17,16 @@ angular.module('wxn.chats').factory('KanbanService', [
           priority,
           expectedVersion: card.conversation.version,
         }),
-      status: (card, status, actorMemberId) =>
-        api.patch('/conversations/' + card.conversation.id + '/status?status=' + status, {
+      status: (card, status, actorMemberId) => {
+        const current = card.conversation.status;
+        const route = current === 'RESOLVED' || current === 'CLOSED' ? 'reopen' : 'status?status=' + status;
+        return api.patch('/conversations/' + card.conversation.id + '/' + route, {
+          actorMemberId,
+          expectedVersion: card.conversation.version,
+        });
+      },
+      assume: (card, actorMemberId) =>
+        api.patch('/conversations/' + card.conversation.id + '/assume', {
           actorMemberId,
           expectedVersion: card.conversation.version,
         }),

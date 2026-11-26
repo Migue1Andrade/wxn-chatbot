@@ -1,97 +1,355 @@
 <div class="flex min-h-screen bg-slate-50 text-slate-800">
   <management-navigation></management-navigation>
-  <main class="product-page kb-workspace">
-    <header class="kb-heading">
+  <main class="product-page ops-dashboard">
+    <header class="ops-header">
       <div>
-        <p class="kb-eyebrow">VISÃO GERAL · WXN</p>
-        <h1>Sua operação, em perspectiva</h1>
-        <p>Indicadores reais dos atendimentos registrados na plataforma.</p>
+        <h1>Visão geral de atendimentos</h1>
+        <p>Fila, prazos de resposta e resoluções em todos os canais.</p>
       </div>
-      <button
-        ng-click="vm.load()"
-        ng-disabled="vm.loading"
-      >
-        Atualizar
-      </button>
+      <div class="ops-actions">
+        <button
+          type="button"
+          ng-click="vm.load()"
+          ng-disabled="vm.loading"
+        >
+          {{vm.loading ? 'Atualizando…' : 'Atualizar'}}
+        </button>
+        <a
+          href="#!/kanban"
+          class="ops-primary"
+        >
+          Abrir Kanban
+          <span aria-hidden="true">→</span>
+        </a>
+      </div>
     </header>
+    <section
+      class="ops-filters"
+      aria-label="Filtros dos indicadores"
+    >
+      <div
+        class="ops-periods"
+        role="group"
+        aria-label="Período"
+      >
+        <button
+          type="button"
+          ng-repeat="period in [{id:'7',label:'7 dias'},{id:'14',label:'14 dias'},{id:'30',label:'30 dias'},{id:'custom',label:'Personalizado'}]"
+          ng-click="vm.setPeriod(period.id)"
+          ng-class="{'is-active':vm.period === period.id}"
+        >
+          {{period.label}}
+        </button>
+      </div>
+      <form
+        ng-if="vm.period === 'custom'"
+        class="ops-date-filter"
+        ng-submit="vm.applyCustomPeriod()"
+      >
+        <label>
+          De
+          <input
+            type="date"
+            ng-model="vm.filters.from"
+            required
+          />
+        </label>
+        <label>
+          Até
+          <input
+            type="date"
+            ng-model="vm.filters.to"
+            required
+          />
+        </label>
+        <button type="submit">Aplicar</button>
+      </form>
+      <label class="ops-channel">
+        Canal
+        <select
+          ng-model="vm.filters.channelId"
+          ng-change="vm.load()"
+        >
+          <option value="">Todos os canais</option>
+          <option
+            ng-repeat="channel in vm.channels track by channel.id"
+            value="{{channel.id}}"
+          >
+            {{channel.name}}
+          </option>
+        </select>
+      </label>
+    </section>
     <error-state
       ng-if="vm.error"
       message="{{vm.error}}"
       on-retry="vm.load()"
     ></error-state>
     <table-skeleton ng-if="vm.loading && !vm.metrics"></table-skeleton>
-    <section class="kb-metrics">
-      <div>
-        <span>Abertos</span>
-        <strong>{{vm.metrics.open == null ? '—' : vm.metrics.open}}</strong>
-        <small>Todos os canais</small>
-      </div>
-      <div>
-        <span>Sem responsável</span>
-        <strong>{{vm.metrics.unassigned == null ? '—' : vm.metrics.unassigned}}</strong>
-        <small>Fila operacional</small>
-      </div>
-      <div>
-        <span>Esperando a equipe</span>
-        <strong>{{vm.metrics.waitingForAgent == null ? '—' : vm.metrics.waitingForAgent}}</strong>
-        <small>Resposta externa pendente</small>
-      </div>
-      <div>
-        <span>Resolvidos hoje</span>
-        <strong>{{vm.metrics.resolvedToday == null ? '—' : vm.metrics.resolvedToday}}</strong>
-        <small>Dia em {{vm.metrics.timezone}}</small>
-      </div>
-      <div>
-        <span>Resolução média</span>
-        <strong>
-          {{vm.metrics.averageResolutionMinutes == null ? '—' : (vm.metrics.averageResolutionMinutes |
-          number:0) + ' min'}}
-        </strong>
-        <small>Todos os ciclos registrados</small>
-      </div>
-    </section>
-    <div class="grid gap-6 lg:grid-cols-2">
-      <section class="rounded-xl border border-slate-200 bg-white p-6">
-        <h2 class="mb-6 text-sm font-semibold">Distribuição por status</h2>
-        <div
-          ng-repeat="group in vm.metrics.groups"
-          class="mb-5"
-        >
-          <div class="mb-2 flex justify-between text-xs">
-            <span>{{vm.labels[group.status] || group.status}}</span>
-            <strong>{{group.count}}</strong>
-          </div>
-          <div class="h-2 overflow-hidden rounded-full bg-slate-100">
-            <div
-              class="h-full rounded-full bg-teal-600"
-              ng-style="{width: (vm.total ? group.count / vm.total * 100 : 0) + '%'}"
-            ></div>
-          </div>
-        </div>
-        <p
-          ng-if="!vm.total && !vm.loading && !vm.error"
-          class="py-10 text-center text-sm text-slate-400"
-        >
-          Sem atendimentos registrados.
-        </p>
+    <div
+      ng-if="vm.metrics"
+      ng-attr-aria-busy="{{vm.loading}}"
+    >
+      <section
+        class="ops-snapshot"
+        aria-label="Fotografia atual da fila, todos os canais"
+      >
+        <h2>
+          Fila agora
+          <small>Todos os canais · estado atual</small>
+        </h2>
       </section>
-      <section class="rounded-xl border border-slate-200 bg-white p-6">
-        <h2 class="mb-3 text-sm font-semibold">Central de atendimentos</h2>
-        <p class="text-sm leading-6 text-slate-500">
-          Acompanhe a fila por status, identifique conversas sem responsável e distribua os atendimentos com
-          histórico de alterações.
-        </p>
-        <a
-          href="#!/kanban"
-          class="mt-6 inline-block rounded-lg bg-teal-700 px-4 py-2 text-sm text-white"
-        >
-          Abrir Kanban ↗
-        </a>
-        <p class="mt-8 text-xs leading-5 text-slate-400">
-          As médias consideram somente ciclos com início e resolução registrados. Dados legados sem timestamps
-          não recebem durações estimadas.
-        </p>
+      <section
+        class="ops-kpis"
+        aria-label="Indicadores atuais da fila"
+      >
+        <article class="ops-kpi ops-kpi-primary">
+          <span>Atendimentos abertos</span>
+          <strong>{{vm.metrics.open | number:0}}</strong>
+          <small>Em triagem ou em atendimento</small>
+        </article>
+        <article class="ops-kpi">
+          <span>Aguardando a equipe</span>
+          <strong>{{vm.metrics.waitingForAgent | number:0}}</strong>
+          <small>Conversas com resposta pendente</small>
+        </article>
+        <article class="ops-kpi">
+          <span>Resoluções hoje</span>
+          <strong>{{vm.metrics.resolvedToday | number:0}}</strong>
+          <small>Dia em {{vm.metrics.timezone}}</small>
+        </article>
+        <article class="ops-kpi">
+          <span>Tempo médio de resolução</span>
+          <strong ng-if="vm.metrics.averageResolutionMinutes != null">
+            {{vm.metrics.averageResolutionMinutes | number:0}}
+            <small>min</small>
+          </strong>
+          <strong ng-if="vm.metrics.averageResolutionMinutes == null">—</strong>
+          <small>
+            {{vm.metrics.averageResolutionMinutes == null ? 'Sem ciclos completos' : 'Ciclos com início e
+            resolução registrados'}}
+          </small>
+        </article>
       </section>
+      <section class="ops-snapshot ops-period-heading">
+        <h2>
+          Atividade no período
+          <small>{{vm.filters.from || vm.period}} · {{vm.metrics.timezone}}</small>
+        </h2>
+      </section>
+      <div class="ops-grid ops-analytics">
+        <section
+          class="ops-panel"
+          aria-labelledby="ops-volume"
+        >
+          <header class="ops-panel-header">
+            <div>
+              <h2 id="ops-volume">Entradas e resoluções</h2>
+              <p>Últimos 7 dias · {{vm.metrics.timezone}}</p>
+            </div>
+            <ul
+              class="ops-legend"
+              aria-label="Legenda"
+            >
+              <li>
+                <i
+                  class="ops-dot ops-opened"
+                  aria-hidden="true"
+                ></i>
+                Entradas
+              </li>
+              <li>
+                <i
+                  class="ops-dot ops-resolved"
+                  aria-hidden="true"
+                ></i>
+                Resoluções
+              </li>
+            </ul>
+          </header>
+          <ol
+            ng-if="vm.hasVolume"
+            class="ops-volume-chart"
+            aria-label="Volume diário"
+          >
+            <li ng-repeat="day in vm.volume track by day.date">
+              <span class="sr-only">{{day.date}}, {{day.opened}} entradas e {{day.resolved}} resoluções</span>
+              <div
+                class="ops-volume-pair"
+                aria-hidden="true"
+              >
+                <div
+                  class="ops-volume-bar ops-opened"
+                  ng-style="{height: (day.opened / vm.volumeMax * 100) + '%'}"
+                >
+                  <span>{{day.opened | number:0}}</span>
+                </div>
+                <div
+                  class="ops-volume-bar ops-resolved"
+                  ng-style="{height: (day.resolved / vm.volumeMax * 100) + '%'}"
+                >
+                  <span>{{day.resolved | number:0}}</span>
+                </div>
+              </div>
+              <time
+                datetime="{{day.date}}"
+                aria-hidden="true"
+              >
+                {{day.label}}
+              </time>
+            </li>
+          </ol>
+          <p
+            class="ops-empty"
+            ng-if="!vm.hasVolume"
+          >
+            Sem entradas ou resoluções no período.
+          </p>
+        </section>
+        <section
+          class="ops-panel"
+          aria-labelledby="ops-aging"
+        >
+          <header class="ops-panel-header">
+            <div>
+              <h2 id="ops-aging">Tempo na fila de resposta</h2>
+              <p>Conversas que aguardam a equipe agora</p>
+            </div>
+            <span ng-if="vm.agingTotal">{{vm.agingTotal | number:0}} na fila</span>
+          </header>
+          <ul
+            ng-if="vm.agingTotal"
+            class="ops-aging-list"
+          >
+            <li ng-repeat="bucket in vm.aging track by bucket.label">
+              <div>
+                <span>{{bucket.label}}</span>
+                <strong>{{bucket.count | number:0}}</strong>
+              </div>
+              <div
+                class="ops-aging-track"
+                aria-hidden="true"
+              >
+                <span
+                  ng-class="bucket.tone"
+                  ng-style="{width: (bucket.count / vm.agingTotal * 100) + '%'}"
+                ></span>
+              </div>
+            </li>
+          </ul>
+          <p
+            class="ops-empty"
+            ng-if="!vm.agingTotal"
+          >
+            Nenhuma conversa com espera registrada.
+          </p>
+        </section>
+      </div>
+      <div class="ops-grid">
+        <section
+          class="ops-panel"
+          aria-labelledby="ops-distribution"
+        >
+          <header class="ops-panel-header">
+            <h2 id="ops-distribution">Distribuição por status</h2>
+            <span>{{vm.total | number:0}} no total</span>
+          </header>
+          <p
+            ng-if="!vm.total"
+            class="ops-empty"
+          >
+            Nenhum atendimento registrado.
+          </p>
+          <div
+            ng-if="vm.total"
+            class="ops-chart"
+            aria-hidden="true"
+          >
+            <span
+              ng-repeat="group in vm.groups track by group.status"
+              ng-if="group.count"
+              ng-class="group.status"
+              ng-style="{flexGrow: group.count}"
+            ></span>
+          </div>
+          <ul
+            class="ops-breakdown"
+            ng-if="vm.total"
+          >
+            <li ng-repeat="group in vm.groups track by group.status">
+              <span
+                class="ops-dot"
+                ng-class="group.status"
+                aria-hidden="true"
+              ></span>
+              <span>{{group.label}}</span>
+              <strong>{{group.count | number:0}}</strong>
+              <span class="ops-share">{{group.count / vm.total * 100 | number:0}}%</span>
+            </li>
+          </ul>
+        </section>
+        <section
+          class="ops-panel"
+          aria-labelledby="ops-priorities"
+        >
+          <header class="ops-panel-header">
+            <div>
+              <h2 id="ops-priorities">Prioridades da fila</h2>
+              <p>Atribuições e prazos de atendimento</p>
+            </div>
+          </header>
+          <ul class="ops-priority-list">
+            <li>
+              <a href="#!/kanban?unassigned">
+                <span
+                  class="ops-indicator ops-neutral"
+                  aria-hidden="true"
+                ></span>
+                <span>Sem responsável</span>
+                <strong>{{vm.metrics.unassigned | number:0}}</strong>
+                <span
+                  class="ops-arrow"
+                  aria-hidden="true"
+                >
+                  →
+                </span>
+              </a>
+            </li>
+            <li>
+              <a href="#!/kanban?sla=AT_RISK">
+                <span
+                  class="ops-indicator ops-warning"
+                  aria-hidden="true"
+                ></span>
+                <span>Prazo em risco</span>
+                <strong>{{vm.metrics.slaAtRisk | number:0}}</strong>
+                <span
+                  class="ops-arrow"
+                  aria-hidden="true"
+                >
+                  →
+                </span>
+              </a>
+            </li>
+            <li>
+              <a href="#!/kanban?sla=BREACHED">
+                <span
+                  class="ops-indicator ops-danger"
+                  aria-hidden="true"
+                ></span>
+                <span>Prazo vencido</span>
+                <strong>{{vm.metrics.slaBreached | number:0}}</strong>
+                <span
+                  class="ops-arrow"
+                  aria-hidden="true"
+                >
+                  →
+                </span>
+              </a>
+            </li>
+          </ul>
+        </section>
+      </div>
     </div>
   </main>
 </div>

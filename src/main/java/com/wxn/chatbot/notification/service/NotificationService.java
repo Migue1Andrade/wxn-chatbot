@@ -77,11 +77,7 @@ public class NotificationService {
         if (page < 0 || page > 10000) {
             throw ApiException.badRequest("Página inválida");
         }
-        return repository
-            .findByUserIdOrderByCreatedAtDescIdDesc(user, PageRequest.of(page, 30))
-            .stream()
-            .map(this::response)
-            .toList();
+        return repository.findVisible(user, PageRequest.of(page, 30)).stream().map(this::response).toList();
     }
 
     public long count(Long user) {
@@ -99,4 +95,79 @@ public class NotificationService {
     public void readAll(Long user) {
         repository.readAll(user);
     }
+
+    public Response claimResource(Long user, Long notificationId) {
+        var notification = repository
+            .findFirstByIdAndUserIdAndTypeAndResourceTypeAndReadAtIsNull(
+                notificationId,
+                user,
+                "CONVERSATION_AVAILABLE",
+                "CONVERSATION"
+            )
+            .orElseThrow(() -> ApiException.notFound("Notificação de atendimento não encontrada"));
+        return response(notification);
+    }
+
+    public void offerConversation(String conversationId, String offerId, List<Long> users) {
+        for (Long user : users) {
+            createOnce(
+                user,
+                "CONVERSATION_AVAILABLE",
+                "Um atendimento aguarda responsável",
+                "CONVERSATION",
+                conversationId,
+                "conversation-available:" + conversationId + ":" + offerId + ":" + user
+            );
+        }
+    }
+
+    public void dismissConversation(String conversationId) {
+        var affected = repository.findByResourceTypeAndResourceIdAndType(
+            "CONVERSATION",
+            conversationId,
+            "CONVERSATION_AVAILABLE"
+        );
+        if (repository.dismissAvailable(conversationId) == 0) {
+            return;
+        }
+        Runnable publish = () ->
+            affected
+                .stream()
+                .map(UserNotification::getUserId)
+                .distinct()
+                .forEach(user -> events.publishEvent(new Changed(user)));
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        publish.run();
+                    }
+                }
+            );
+        } else {
+            publish.run();
+        }
+    }
+
+    public void dismissTaskOverdue(String taskId, Long userId) {
+        if (repository.dismissTaskOverdue(taskId, userId) == 0) {
+            return;
+        }
+        Runnable publish = () -> events.publishEvent(new Changed(userId));
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        publish.run();
+                    }
+                }
+            );
+        } else {
+            publish.run();
+        }
+    }
+
+    public record Changed(Long userId) {}
 }

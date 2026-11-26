@@ -18,17 +18,20 @@ public class MockIngressService {
     private final ChannelService channels;
     private final WhatsAppProviderResolver providers;
     private final MessageService messages;
+    private final org.springframework.beans.factory.ObjectProvider<com.wxn.chatbot.openbot.OpenBotSupportService> support;
 
     public MockIngressService(
         ChannelService channels,
         WhatsAppProviderResolver providers,
         MessageService messages,
+        org.springframework.beans.factory.ObjectProvider<com.wxn.chatbot.openbot.OpenBotSupportService> support,
         DevelopmentAccess access
     ) {
         this.access = access;
         this.channels = channels;
         this.providers = providers;
         this.messages = messages;
+        this.support = support;
     }
 
     public void status(Long channelId, NormalizedStatusEvent event) {
@@ -120,6 +123,8 @@ public class MockIngressService {
             payload.put("senderName", request.senderName());
         }
         var normalized = providers.resolve(channel).normalizeInbound(payload);
-        return messages.receive(channel, normalized, true);
+        NormalizedMessage result = messages.receive(channel, normalized, true);
+        support.ifAvailable(service -> service.dispatch(channel, normalized));
+        return result;
     }
 }

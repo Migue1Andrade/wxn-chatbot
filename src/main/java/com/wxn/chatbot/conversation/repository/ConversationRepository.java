@@ -14,4 +14,16 @@ public interface ConversationRepository
     boolean existsByDepartmentId(Long departmentId);
     boolean existsByDepartmentIdAndStatusNotIn(Long departmentId, java.util.Collection<String> statuses);
     Optional<Conversation> findByChannelIdAndConversationKey(Long channelId, String key);
+
+    Optional<Conversation> findFirstByChannelIdAndContactPhoneAndConversationTypeAndStatusNotInOrderByLastInboundAtDesc(
+        Long channelId,
+        String contactPhone,
+        com.wxn.chatbot.whatsapp.model.ConversationType type,
+        java.util.Collection<String> terminalStatuses
+    );
+
+    java.util.List<Conversation> findByAssignedMemberIdAndStatusIn(
+        Long memberId,
+        java.util.Collection<String> statuses
+    );
 }

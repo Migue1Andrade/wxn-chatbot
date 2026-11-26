@@ -22,11 +22,32 @@ spring:
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:${MONGO_PORT:4004}/${MONGO_DB}}
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
 
 wxn:
+  auth:
+    password-reset:
+      public-url: ${PASSWORD_RESET_PUBLIC_URL:http://localhost:4002/#!/reset-password}
+      from: ${PASSWORD_RESET_FROM:no-reply@wxn.local}
   dev:
     api-key: ${DEV_API_KEY:}
     frontend-origin: ${FRONTEND_ORIGIN:http://localhost:4002}
+
+openbot:
+  support:
+    enabled: ${OPENBOT_SUPPORT_ENABLED:false}
+    webhook-url: ${OPENBOT_SUPPORT_WEBHOOK_URL:}
+    service-token: ${OPENBOT_SUPPORT_SERVICE_TOKEN:}
+    hmac-secret: ${OPENBOT_SUPPORT_HMAC_SECRET:}
+    auto-assign-bot-id: ${OPENBOT_SUPPORT_AUTO_ASSIGN_BOT_ID:}
+    auto-assign-channel-id: ${OPENBOT_SUPPORT_AUTO_ASSIGN_CHANNEL_ID:}
 # Provider URLs contain credentials. Never enable HTTP request tracing for these clients.
 logging:
   level:

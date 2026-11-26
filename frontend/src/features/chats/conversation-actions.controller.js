@@ -2,17 +2,31 @@ import angular from 'angular';
 import { contactInitials, contactTone } from '../../shared/contact-identity.js';
 import { AsyncState } from '../../core/state/async-state.js';
 import { ConversationActions } from './conversation-actions.service.js';
+import { conversationStatusLabel, isConversationFinal, waitingForReply } from './conversation-filters.js';
 
 angular.module('wxn.chats').controller('ConversationActionsController', [
   '$scope',
   '$timeout',
+  '$location',
   'ChatsService',
   'ConversationActionsService',
   'ConversationActivitiesService',
   'EventBusService',
   'ChatEvents',
-  function ($scope, $timeout, chats, actions, activities, bus, events) {
+  function ($scope, $timeout, $location, chats, actions, activities, bus, events) {
     const vm = this;
+    vm.statusLabel = conversationStatusLabel;
+    vm.waitingForReply = waitingForReply;
+    vm.isFinal = () => isConversationFinal(vm.conversation?.status);
+    vm.ownsConversation = () => vm.actor?.id != null && vm.actor.id === vm.conversation?.assignedMemberId;
+    vm.canScheduleFollowUp = () => vm.isAdmin || vm.ownsConversation();
+    vm.scheduleFollowUp = () =>
+      $location.path('/tasks').search({ conversation: vm.conversation.id, type: 'FOLLOW_UP' });
+    vm.canReopen = () =>
+      vm.ownsConversation() &&
+      vm.isFinal() &&
+      vm.conversation.status !== 'CANCELLED' &&
+      !vm.conversation.botSessionEndedAt;
     vm.initials = contactInitials;
     vm.tone = contactTone;
     vm.operation = new AsyncState();
@@ -30,6 +44,7 @@ angular.module('wxn.chats').controller('ConversationActionsController', [
       reopen: 'Reabrir atendimento',
       details: 'Detalhes da conversa',
       history: 'Histórico de atendimento',
+      resolve: 'Marcar como resolvida',
     };
     const eventTypes = {
       assume: events.ASSIGNED,
@@ -37,6 +52,7 @@ angular.module('wxn.chats').controller('ConversationActionsController', [
       transfer: events.TRANSFERRED,
       close: events.CLOSED,
       reopen: events.REOPENED,
+      resolve: events.UPDATED,
     };
     let epoch = 0;
     let destroyed = false;

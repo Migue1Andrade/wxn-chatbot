@@ -1,4 +1,5 @@
 import angular from 'angular';
+import { isConversationFinal } from '../chats/conversation-filters.js';
 
 angular.module('wxn.messages').factory('MessageActionsService', [
   'ApiClientService',
@@ -68,9 +69,9 @@ angular.module('wxn.messages').factory('MessageActionsService', [
       return (
         state.writable &&
         c?.id === state.conversationId &&
-        c.status !== 'CLOSED' &&
-        user &&
-        (user.role === 'ADMIN' || (user.memberId && c.assignedMemberId === user.memberId))
+        !isConversationFinal(c.status) &&
+        user?.memberId &&
+        c.assignedMemberId === user.memberId
       );
     }
     function supports(capability) {
@@ -107,17 +108,10 @@ angular.module('wxn.messages').factory('MessageActionsService', [
       state.loadingDestinations = true;
       const source = selected.state.selected;
       return chats
-        .listConversations(
-          {
-            ...(session.user?.role === 'ADMIN' ? {} : { assignedMemberId: session.user?.memberId }),
-          },
-          state.destinationPage,
-        )
+        .listConversations({ assignedMemberId: session.user?.memberId }, state.destinationPage)
         .then((page) => {
           state.destinations.push(
-            ...page.items.filter(
-              (c) => c.channelId === source.channelId && !['CLOSED', 'RESOLVED'].includes(c.status),
-            ),
+            ...page.items.filter((c) => c.channelId === source.channelId && !isConversationFinal(c.status)),
           );
           state.more = page.hasMore;
           state.destinationPage++;
@@ -137,7 +131,7 @@ angular.module('wxn.messages').factory('MessageActionsService', [
       return loadDestinations(true);
     }
     function performForward() {
-      if (state.loading || !state.destinationId || !state.forwarding) {
+      if (!writable() || state.loading || !state.destinationId || !state.forwarding) {
         return;
       }
       state.loading = true;

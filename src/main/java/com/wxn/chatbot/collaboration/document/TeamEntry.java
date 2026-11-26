@@ -20,7 +20,8 @@ public record TeamEntry(
     Instant deletedAt,
     long version,
     List<Revision> revisions,
-    String operationId
+    String operationId,
+    String color
 ) {
     public record Revision(String content, Long actorUserId, Instant at) {}
 }

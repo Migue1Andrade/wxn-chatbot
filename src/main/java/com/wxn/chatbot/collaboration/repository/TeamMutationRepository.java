@@ -21,6 +21,7 @@ public class TeamMutationRepository {
         long expected,
         String content,
         boolean pinned,
+        String color,
         boolean delete,
         Long actor
     ) {
@@ -31,6 +32,9 @@ public class TeamMutationRepository {
             .set("updatedAt", now)
             .inc("version", 1)
             .push("revisions", new TeamEntry.Revision(entry.content(), actor, now));
+        if (color != null) {
+            update.set("color", color);
+        }
         if (delete) {
             update.set("deletedAt", now);
         }

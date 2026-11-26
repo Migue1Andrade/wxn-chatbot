@@ -5,6 +5,7 @@ export const ConversationActions = Object.freeze({
   TRANSFER: 'transfer',
   CLOSE: 'close',
   REOPEN: 'reopen',
+  RESOLVE: 'resolve',
 });
 angular.module('wxn.chats').factory('ConversationActionsService', [
   'ApiClientService',
@@ -14,7 +15,9 @@ angular.module('wxn.chats').factory('ConversationActionsService', [
         if (!Object.values(ConversationActions).includes(action)) {
           throw new Error('Ação de atendimento inválida.');
         }
-        return api.patch('/conversations/' + encodeURIComponent(id) + '/' + action, payload);
+        const status = { resolve: 'RESOLVED' }[action];
+        const route = status ? 'status?status=' + status : action;
+        return api.patch('/conversations/' + encodeURIComponent(id) + '/' + route, payload);
       },
     };
   },

@@ -524,7 +524,8 @@ public class LocalDemoService {
                 null,
                 0,
                 List.of(),
-                "wxn-demo-" + key
+                "wxn-demo-" + key,
+                "SAGE"
             )
         );
     }

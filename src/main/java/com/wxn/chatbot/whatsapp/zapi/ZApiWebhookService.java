@@ -23,6 +23,7 @@ public class ZApiWebhookService {
     private final MessageService messages;
     private final ZApiWebhookMapper mapper;
     private final com.wxn.chatbot.messagelog.service.MessageLogService logs;
+    private final org.springframework.beans.factory.ObjectProvider<com.wxn.chatbot.openbot.OpenBotSupportService> support;
 
     public ZApiWebhookService(
         ZApiConfiguration config,
@@ -32,9 +33,11 @@ public class ZApiWebhookService {
         com.wxn.chatbot.messagelog.service.MessageLogService logs,
         com.wxn.chatbot.whatsapp.repository.WebhookInboxRepository inbox,
         com.wxn.chatbot.whatsapp.operations.ChannelOperationsService operations,
-        com.wxn.chatbot.message.service.MessageMutationService mutations
+        com.wxn.chatbot.message.service.MessageMutationService mutations,
+        org.springframework.beans.factory.ObjectProvider<com.wxn.chatbot.openbot.OpenBotSupportService> support
     ) {
         this.mutations = mutations;
+        this.support = support;
         this.inbox = inbox;
         this.operations = operations;
         this.config = config;
@@ -183,6 +186,7 @@ public class ZApiWebhookService {
                 );
             } else {
                 messages.receive(channel, incoming, false);
+                support.ifAvailable(service -> service.dispatch(channel, incoming));
             }
             return "APPLIED";
         }

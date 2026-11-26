@@ -63,6 +63,7 @@ angular.module('wxnDashboard').config([
           ],
         },
       })
+      .when('/reset-password', { template: '<password-reset></password-reset>' })
       .when('/', {
         template: '<chat-layout></chat-layout>',
         reloadOnSearch: false,

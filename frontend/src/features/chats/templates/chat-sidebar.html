@@ -5,14 +5,15 @@
       <p>Caixa de entrada do WhatsApp</p>
     </div>
     <button
+      ng-if="$ctrl.isAdmin && $ctrl.state.scope === 'all'"
       type="button"
       class="filter-toggle"
       ng-class="{'is-active': $ctrl.filtersOpen}"
       ng-click="$ctrl.filtersOpen = !$ctrl.filtersOpen"
-      aria-label="Filtros e atendente"
+      aria-label="Filtrar por responsável"
       aria-expanded="{{$ctrl.filtersOpen || false}}"
       aria-controls="inbox-filters"
-      title="Filtros e atendente"
+      title="Filtrar por responsável"
     >
       <svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10m-7 6h4" /></svg>
     </button>
@@ -36,24 +37,32 @@
     />
   </label>
   <div
-    class="inbox-tabs"
-    role="group"
-    aria-label="Filtrar conversas"
+    class="inbox-selects"
+    ng-class="{'has-scope': $ctrl.isAdmin}"
   >
-    <button
-      type="button"
-      ng-repeat="filter in $ctrl.filters track by filter.value"
-      ng-click="$ctrl.onFilter({filter: filter.value})"
-      aria-pressed="{{$ctrl.state.filter === filter.value}}"
-      ng-class="{'is-active': $ctrl.state.filter === filter.value}"
-    >
-      {{filter.value === 'all' ? 'Todos' : (filter.value === 'pending' ? 'Aguardando' : filter.label)}}
-    </button>
+    <label ng-if="$ctrl.isAdmin">
+      <span>Conversas</span>
+      <select
+        ng-model="$ctrl.scopeFilter"
+        ng-model-options="{getterSetter: true}"
+      >
+        <option value="all">Todas as conversas</option>
+        <option value="mine">Minhas conversas</option>
+      </select>
+    </label>
+    <label>
+      <span>Status</span>
+      <select
+        ng-model="$ctrl.statusFilter"
+        ng-model-options="{getterSetter: true}"
+        ng-options="filter.value as filter.label for filter in $ctrl.availableFilters()"
+      ></select>
+    </label>
   </div>
 </header>
 <section
   id="inbox-filters"
-  ng-if="$ctrl.filtersOpen"
+  ng-if="$ctrl.filtersOpen && $ctrl.isAdmin && $ctrl.state.scope === 'all'"
   class="inbox-filters space-y-4 border-b border-slate-100 px-6 py-4"
   aria-label="Filtros de atendimento"
 >
@@ -70,22 +79,6 @@
       <option value="">Todos os responsáveis</option>
     </select>
   </label>
-  <div
-    ng-if="$ctrl.member.availableHumans.length"
-    class="rounded-xl border border-teal-100 bg-teal-50/60 p-3"
-  >
-    <label class="block text-[10px] font-semibold uppercase tracking-wider text-teal-800">
-      Respondendo como
-      <select
-        aria-label="Atendente de desenvolvimento"
-        ng-model="$ctrl.readerId"
-        ng-options="member.id as member.name for member in $ctrl.member.availableHumans"
-        ng-change="$ctrl.onReader({id: $ctrl.readerId})"
-        class="mt-1.5 w-full rounded-lg border border-teal-200 bg-white px-2.5 py-2 text-xs font-medium normal-case tracking-normal text-slate-700 outline-none focus:ring-2 focus:ring-teal-200"
-      ></select>
-    </label>
-    <p class="mt-1.5 text-[10px] leading-4 text-teal-700">Define suas conversas e mensagens não lidas.</p>
-  </div>
 </section>
 <div
   ng-if="$ctrl.state.error"
@@ -114,6 +107,7 @@
   unread="$ctrl.state.unread"
   on-select="$ctrl.onSelect({conversation: conversation})"
   member-name="$ctrl.memberName(id)"
+  show-active-owner="$ctrl.isAdmin"
 ></chat-list>
 <button
   ng-if="$ctrl.state.hasMore"
@@ -165,6 +159,6 @@
     class="inbox-agent"
     title="{{$ctrl.member.member.name}}"
   >
-    {{$ctrl.member.member.name || 'Selecione um atendente nos filtros'}}
+    {{$ctrl.member.member.name || 'Conta sem atendente vinculado'}}
   </span>
 </footer>

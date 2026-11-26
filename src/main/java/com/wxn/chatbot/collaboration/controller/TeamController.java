@@ -59,7 +59,7 @@ public class TeamController {
 
     @DeleteMapping({ "/notes/{id}", "/internal-messages/{id}" })
     public Entry delete(@PathVariable String id, @RequestParam long version, HttpServletRequest r) {
-        return service.edit(id, new Edit("Removido", false, version), true, actor(r));
+        return service.edit(id, new Edit("Removido", false, version, null), true, actor(r));
     }
 
     @GetMapping({ "/notes/{id}/history", "/internal-messages/{id}/history" })

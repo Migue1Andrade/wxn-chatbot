@@ -12,6 +12,7 @@ angular.module('wxn.chats').directive('chatHeader', function () {
       members: '<',
       channels: '<',
       actor: '<',
+      isAdmin: '<',
       onBack: '&',
       onTeam: '&',
     },

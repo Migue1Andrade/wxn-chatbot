@@ -72,16 +72,13 @@ public class MemberService {
 
     public void requireMessageActor(Long userId, Long memberId, Long assignedMemberId) {
         var user = users.requireActive(userId);
-        if (
-            user.getRole() != com.wxn.chatbot.user.entity.UserRole.ADMIN &&
-            (memberId == null || !java.util.Objects.equals(memberId, assignedMemberId))
-        ) {
+        if (memberId == null || !java.util.Objects.equals(memberId, assignedMemberId)) {
             throw new ApiException(
                 org.springframework.http.HttpStatus.FORBIDDEN,
-                "Atendimento transferido ou acesso revogado"
+                "Assuma a conversa antes de responder"
             );
         }
-        if (memberId != null && !java.util.Objects.equals(requireHumanActive(memberId).getUserId(), userId)) {
+        if (!java.util.Objects.equals(requireHumanActive(memberId).getUserId(), user.getId())) {
             throw new ApiException(org.springframework.http.HttpStatus.FORBIDDEN, "Autoria incompatível");
         }
     }

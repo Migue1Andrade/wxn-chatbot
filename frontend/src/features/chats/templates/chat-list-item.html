@@ -25,12 +25,16 @@
     <span class="conversation-meta">
       <span
         class="status-tag"
-        ng-class="{'status-waiting': $ctrl.conversation.status === 'PENDING', 'status-active': $ctrl.conversation.status === 'IN_PROGRESS', 'status-closed': $ctrl.conversation.status === 'CLOSED'}"
+        ng-class="{'status-waiting': $ctrl.conversation.status === 'PENDING', 'status-active': $ctrl.visibleStatus($ctrl.conversation.status) === 'IN_PROGRESS', 'status-closed': $ctrl.isFinal($ctrl.conversation.status)}"
       >
-        {{$ctrl.conversation.status === 'CLOSED' ? 'Finalizado' : ($ctrl.conversation.status === 'IN_PROGRESS'
-        ? 'Em atendimento' : 'Aguardando')}}
+        {{$ctrl.statusLabel($ctrl.conversation.status)}}
       </span>
-      <span class="conversation-owner">{{$ctrl.memberName}}</span>
+      <span
+        ng-if="!($ctrl.showActiveOwner && $ctrl.visibleStatus($ctrl.conversation.status) === 'IN_PROGRESS')"
+        class="conversation-owner"
+      >
+        {{$ctrl.memberName}}
+      </span>
       <span
         ng-if="$ctrl.unread"
         class="unread-badge"
@@ -38,6 +42,20 @@
       >
         {{$ctrl.unread}}
       </span>
+    </span>
+    <span
+      ng-if="$ctrl.waitingForReply($ctrl.conversation)"
+      class="conversation-reply-state"
+    >
+      {{$ctrl.waitingForReply($ctrl.conversation)}}
+    </span>
+    <span
+      ng-if="$ctrl.showActiveOwner && $ctrl.visibleStatus($ctrl.conversation.status) === 'IN_PROGRESS'"
+      class="conversation-active-owner"
+      title="{{$ctrl.memberName}}"
+    >
+      <span ng-if="$ctrl.conversation.assignedMemberId != null">Atendido por</span>
+      <strong>{{$ctrl.memberName}}</strong>
     </span>
   </span>
 </button>

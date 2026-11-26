@@ -27,4 +27,8 @@ public interface MessageRepository extends MongoRepository<Message, ObjectId>, M
         ObjectId conversationId,
         org.springframework.data.domain.Pageable pageable
     );
+    List<Message> findByConversationIdOrderByCreatedAtDesc(
+        ObjectId conversationId,
+        org.springframework.data.domain.Pageable pageable
+    );
 }

@@ -84,12 +84,19 @@ async function bot(name) {
   return member;
 }
 const primary = members.find(
-  (m) => m.type === 'HUMAN' && m.status === 'ACTIVE' && m.accountStatus === 'ACTIVE',
+  (m) =>
+    m.id === login.user.memberId &&
+    m.type === 'HUMAN' &&
+    m.status === 'ACTIVE' &&
+    m.accountStatus === 'ACTIVE',
 );
 if (!primary) {
-  throw new Error('Cadastre o Atendente pelo seed-local-users.mjs antes de criar exemplos.');
+  throw new Error('O administrador autenticado precisa estar vinculado a um atendente ativo.');
 }
-const secondary = primary;
+const secondary =
+  members.find(
+    (m) => m.id !== primary.id && m.type === 'HUMAN' && m.status === 'ACTIVE' && m.accountStatus === 'ACTIVE',
+  ) || primary;
 const commercial = await bot('Bot Comercial');
 const finance = await bot('Bot Financeiro');
 const channels = await api('GET', prefix + '/whatsapp/channels');
