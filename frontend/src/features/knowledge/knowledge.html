@@ -1,0 +1,560 @@
+<div class="flex min-h-screen bg-slate-50 text-slate-800">
+  <management-navigation></management-navigation>
+  <main class="product-page mx-auto w-full max-w-5xl p-6 sm:p-10">
+    <header class="mb-8">
+      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">Conteúdo de suporte</p>
+      <h1 class="mt-2 text-3xl font-semibold tracking-tight">Base de Conhecimento</h1>
+      <p class="mt-2 max-w-2xl text-sm text-slate-600">
+        Artigos internos para orientar respostas do AutoGuia.
+      </p>
+    </header>
+    <section
+      class="mb-6 rounded-2xl border border-indigo-200 bg-gradient-to-br from-white to-indigo-50 p-5 shadow-sm sm:p-7"
+      aria-labelledby="knowledge-preview-title"
+    >
+      <div class="mb-4">
+        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-700">Prévia sem envio</p>
+        <h2
+          id="knowledge-preview-title"
+          class="mt-1 text-lg font-semibold"
+        >
+          Testar busca
+        </h2>
+        <p class="mt-1 text-sm text-slate-600">
+          Veja quais trechos publicados seriam recuperados para uma pergunta.
+        </p>
+      </div>
+      <form
+        class="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end"
+        ng-submit="vm.testSearch()"
+      >
+        <label
+          for="knowledge-preview-question"
+          class="grid gap-1 text-sm font-medium text-slate-700"
+        >
+          Pergunta de teste
+          <input
+            id="knowledge-preview-question"
+            type="text"
+            class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 py-2 text-base"
+            placeholder="Ex.: Quando devo fazer a próxima revisão?"
+            ng-model="vm.previewQuestion"
+            required
+          />
+        </label>
+        <button
+          type="submit"
+          class="min-h-11 rounded-lg bg-indigo-700 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-700"
+          ng-disabled="vm.previewLoading || !(vm.previewQuestion || '').trim()"
+        >
+          {{vm.previewLoading ? 'Buscando…' : 'Testar busca'}}
+        </button>
+      </form>
+      <div class="mt-3 flex justify-end">
+        <button
+          type="button"
+          class="min-h-11 w-full rounded-lg border border-violet-300 bg-violet-50 px-5 py-2 text-sm font-semibold text-violet-950 hover:bg-violet-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-700 sm:w-auto"
+          ng-click="vm.generateAnswerPreview()"
+          ng-disabled="vm.previewLoading || !(vm.previewQuestion || '').trim()"
+        >
+          {{vm.previewGenerating ? 'Gerando prévia…' : 'Gerar resposta (prévia)'}}
+        </button>
+      </div>
+      <p
+        ng-if="vm.previewLoading"
+        class="mt-4 text-sm text-indigo-800"
+        role="status"
+        aria-live="polite"
+      >
+        {{vm.previewGenerating ? 'Consultando fontes e gerando uma resposta de prévia…' : 'Consultando os
+        artigos publicados…'}}
+      </p>
+      <p
+        ng-if="vm.previewError"
+        class="mt-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-800"
+        role="alert"
+      >
+        {{vm.previewError}}
+      </p>
+      <div
+        ng-if="vm.previewResult && !vm.previewLoading"
+        class="mt-5"
+        aria-live="polite"
+      >
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h3 class="font-semibold">Fontes recuperadas</h3>
+          <span class="rounded-full bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-900">
+            {{vm.previewResult.mode === 'HYBRID' ? 'Busca híbrida' : vm.previewResult.mode === 'TEXT_FALLBACK'
+            ? 'Busca textual (contingência)' : vm.previewResult.mode === 'UNAVAILABLE' ? 'Busca indisponível'
+            : 'Busca textual'}}
+          </span>
+        </div>
+        <p
+          ng-if="!vm.previewResult.sources.length"
+          class="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"
+        >
+          Nenhuma fonte publicada foi encontrada. Esta pergunta precisa de revisão ou atendimento humano.
+        </p>
+        <section
+          ng-if="vm.previewResult.generationStatus === 'GENERATED'"
+          class="mt-3 rounded-xl border border-violet-200 bg-violet-50 p-4"
+          aria-labelledby="knowledge-generated-answer-title"
+        >
+          <h4
+            id="knowledge-generated-answer-title"
+            class="font-semibold text-violet-950"
+          >
+            Resposta gerada para esta prévia · não enviada
+          </h4>
+          <p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
+            {{vm.previewResult.generatedAnswer}}
+          </p>
+        </section>
+        <p
+          ng-if="vm.previewResult.generationStatus === 'NO_SOURCES'"
+          class="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"
+          role="status"
+        >
+          Sem fontes suficientes: o gerador não foi chamado. Revise a pergunta ou os artigos publicados.
+        </p>
+        <p
+          ng-if="vm.previewResult.generationStatus === 'NOT_CONFIGURED'"
+          class="mt-3 rounded-xl border border-slate-200 bg-slate-100 p-4 text-sm text-slate-700"
+          role="status"
+        >
+          A geração de resposta não está configurada neste ambiente. As fontes recuperadas continuam
+          disponíveis abaixo.
+        </p>
+        <p
+          ng-if="vm.previewResult.generationStatus === 'UNAVAILABLE'"
+          class="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900"
+          role="status"
+        >
+          Não foi possível gerar uma resposta agora. As fontes recuperadas continuam disponíveis abaixo.
+        </p>
+        <ol
+          ng-if="vm.previewResult.sources.length"
+          class="mt-3 grid gap-3"
+        >
+          <li
+            ng-repeat="source in vm.previewResult.sources track by (source.articleId + ':' + source.versionId + ':' + source.position)"
+            class="rounded-xl border border-indigo-100 bg-white p-4"
+          >
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+              <h4 class="font-semibold text-slate-900">{{source.title}}</h4>
+              <span class="text-xs font-medium text-slate-500">
+                Artigo {{source.articleId}} · versão {{source.versionNumber}} · trecho {{source.position + 1}}
+              </span>
+            </div>
+            <p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{{source.content}}</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+    <section
+      class="mb-6 rounded-2xl border border-amber-200 bg-white p-5 shadow-sm sm:p-7"
+      aria-labelledby="knowledge-gaps-title"
+      aria-live="polite"
+    >
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-800">Melhoria contínua</p>
+          <h2
+            id="knowledge-gaps-title"
+            class="mt-1 text-lg font-semibold"
+          >
+            Lacunas da base
+          </h2>
+          <p class="mt-1 text-sm text-slate-600">
+            Atendimentos encaminhados porque nenhum artigo publicado trouxe uma fonte adequada.
+          </p>
+        </div>
+        <button
+          type="button"
+          class="min-h-10 rounded-lg border border-amber-300 px-3 py-2 text-sm font-medium text-amber-950 hover:bg-amber-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"
+          ng-click="vm.loadGaps()"
+          ng-disabled="vm.gapLoading"
+        >
+          {{vm.gapLoading ? 'Atualizando…' : 'Atualizar'}}
+        </button>
+      </div>
+      <p
+        ng-if="vm.gapLoading"
+        class="py-6 text-center text-sm text-slate-600"
+        role="status"
+        aria-live="polite"
+      >
+        Carregando lacunas…
+      </p>
+      <div
+        ng-if="vm.gapError"
+        class="rounded-lg bg-rose-50 p-4 text-sm text-rose-800"
+        role="alert"
+      >
+        <p>{{vm.gapError}}</p>
+        <button
+          type="button"
+          class="mt-2 min-h-10 underline"
+          ng-click="vm.loadGaps()"
+        >
+          Tentar novamente
+        </button>
+      </div>
+      <p
+        ng-if="!vm.gapLoading && !vm.gapError && !vm.gaps.length"
+        class="rounded-xl bg-amber-50 p-6 text-center text-sm text-amber-950"
+      >
+        Nenhuma lacuna registrada. A fila não armazena o texto enviado pelo cliente.
+      </p>
+      <ul
+        ng-if="!vm.gapLoading && !vm.gapError && vm.gaps.length"
+        class="divide-y divide-slate-100"
+      >
+        <li
+          ng-repeat="gap in vm.gaps track by gap.id"
+          class="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div class="min-w-0">
+            <p class="font-medium text-slate-900">
+              {{gap.reason === 'NO_SOURCE' ? 'Sem fonte na base publicada' : 'Revisar atendimento'}}
+            </p>
+            <p class="mt-1 text-xs text-slate-500">
+              {{gap.createdAt | date:'dd/MM/yyyy HH:mm'}} · {{gap.status === 'CONVERTED' ? 'Rascunho criado' :
+              'Pendente'}}
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <a
+              class="min-h-10 inline-flex items-center text-sm font-medium text-indigo-800 underline focus-visible:outline-2 focus-visible:outline-offset-2"
+              href="#!/?conversation={{gap.conversationId}}"
+            >
+              Abrir atendimento
+            </a>
+            <button
+              ng-if="gap.status === 'OPEN'"
+              type="button"
+              class="min-h-10 rounded-lg bg-amber-700 px-3 py-2 text-sm font-medium text-white hover:bg-amber-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"
+              ng-click="vm.openGapDraft(gap)"
+              ng-disabled="vm.saving"
+            >
+              Criar rascunho
+            </button>
+            <button
+              ng-if="gap.draftArticleId"
+              type="button"
+              class="min-h-10 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2"
+              ng-click="vm.viewGapDraft(gap)"
+              ng-disabled="vm.gapDraftLoading"
+            >
+              {{vm.gapDraftLoading ? 'Abrindo…' : 'Ver rascunho'}}
+            </button>
+          </div>
+        </li>
+      </ul>
+      <div
+        ng-if="vm.gapTotal > vm.gapPageSize"
+        class="mt-4 flex items-center justify-between border-t border-slate-100 pt-4"
+      >
+        <button
+          type="button"
+          class="min-h-10 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          ng-click="vm.changeGapPage(-1)"
+          ng-disabled="vm.gapLoading || vm.gapPageNumber === 0"
+        >
+          Anterior
+        </button>
+        <span class="text-sm text-slate-600">Página {{vm.gapPageNumber + 1}} de {{vm.gapPageCount}}</span>
+        <button
+          type="button"
+          class="min-h-10 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          ng-click="vm.changeGapPage(1)"
+          ng-disabled="vm.gapLoading || vm.gapPageNumber + 1 >= vm.gapPageCount"
+        >
+          Próxima
+        </button>
+      </div>
+      <p
+        ng-if="vm.gapDraftError"
+        class="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-800"
+        role="alert"
+      >
+        {{vm.gapDraftError}}
+      </p>
+    </section>
+    <section
+      ng-if="vm.createdDraft"
+      class="mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-5 shadow-sm sm:p-7"
+      aria-labelledby="created-draft-title"
+      aria-live="polite"
+    >
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-teal-800">Rascunho salvo</p>
+          <h2
+            id="created-draft-title"
+            class="mt-1 text-lg font-semibold text-slate-900"
+          >
+            {{vm.createdDraft.article.title}}
+          </h2>
+          <p class="mt-1 text-sm text-slate-600">
+            {{vm.createdDraft.article.category}} · artigo {{vm.createdDraft.article.id}}
+          </p>
+        </div>
+        <button
+          type="button"
+          class="min-h-10 rounded-lg px-3 text-sm underline"
+          ng-click="vm.closeCreatedDraft()"
+        >
+          Fechar
+        </button>
+      </div>
+      <div
+        ng-repeat="version in vm.createdDraft.versions | limitTo:1"
+        class="mt-4 rounded-xl border border-teal-100 bg-white p-4"
+      >
+        <p class="text-xs font-medium text-slate-500">Versão {{version.number}} · {{version.status}}</p>
+        <p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{{version.content}}</p>
+      </div>
+    </section>
+    <section
+      class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7"
+      aria-live="polite"
+    >
+      <div class="mb-5 flex items-center justify-between gap-3">
+        <h2 class="text-lg font-semibold">Artigos</h2>
+        <div class="flex gap-2">
+          <button
+            type="button"
+            class="rounded-lg border px-3 py-2 text-sm"
+            ng-click="vm.load()"
+            ng-disabled="vm.loading"
+          >
+            Atualizar lista
+          </button>
+          <button
+            type="button"
+            class="rounded-lg bg-teal-700 px-3 py-2 text-sm font-medium text-white"
+            ng-click="vm.openCreate()"
+          >
+            Novo artigo
+          </button>
+        </div>
+      </div>
+      <p
+        ng-if="vm.loading"
+        class="py-8 text-center text-sm text-slate-500"
+      >
+        Carregando artigos…
+      </p>
+      <div
+        ng-if="vm.error"
+        class="rounded-lg bg-rose-50 p-4 text-sm text-rose-800"
+        role="alert"
+      >
+        <p>{{vm.error}}</p>
+        <button
+          type="button"
+          class="mt-2 underline"
+          ng-click="vm.load()"
+        >
+          Tentar novamente
+        </button>
+      </div>
+      <p
+        ng-if="vm.archiveError"
+        class="mb-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-800"
+        role="alert"
+      >
+        {{vm.archiveError}}
+      </p>
+      <p
+        ng-if="!vm.loading && !vm.error && !vm.articles.length"
+        class="rounded-xl bg-slate-50 p-8 text-center text-sm text-slate-600"
+      >
+        Ainda não há artigos. Os rascunhos aparecerão aqui quando forem criados.
+      </p>
+      <ul
+        ng-if="!vm.loading && !vm.error && vm.articles.length"
+        class="divide-y divide-slate-100"
+      >
+        <li
+          ng-repeat="article in vm.articles track by article.id"
+          class="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div class="min-w-0">
+            <h3 class="truncate font-medium">{{article.title}}</h3>
+            <p class="mt-1 text-xs text-slate-500">{{article.category}}</p>
+          </div>
+          <div class="flex items-center justify-between gap-3">
+            <span class="w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+              {{article.status}}
+            </span>
+            <button
+              ng-if="article.status !== 'ARCHIVED'"
+              type="button"
+              class="text-sm font-medium text-emerald-800 underline"
+              ng-click="vm.publishDraft(article)"
+              ng-disabled="vm.publication.state === 'loading' || (vm.publication.state === 'pending' && vm.publication.articleId === article.id)"
+            >
+              {{vm.publication.articleId === article.id && vm.publication.state === 'pending' ? 'Indexando…' :
+              'Publicar revisão'}}
+            </button>
+            <button
+              type="button"
+              class="text-sm font-medium text-teal-800 underline"
+              ng-click="vm.openEdit(article)"
+              ng-if="article.status !== 'ARCHIVED'"
+            >
+              Editar revisão
+            </button>
+            <button
+              type="button"
+              class="text-sm font-medium text-rose-800 underline"
+              ng-click="vm.requestArchive(article)"
+              ng-if="article.status !== 'ARCHIVED' && vm.archiveCandidateId !== article.id"
+            >
+              Arquivar
+            </button>
+            <button
+              type="button"
+              class="text-sm font-medium text-rose-800 underline"
+              ng-click="vm.archiveArticle(article)"
+              ng-disabled="vm.archivingId === article.id"
+              ng-if="article.status !== 'ARCHIVED' && vm.archiveCandidateId === article.id"
+            >
+              {{vm.archivingId === article.id ? 'Arquivando…' : 'Confirmar arquivamento'}}
+            </button>
+            <button
+              type="button"
+              class="text-sm text-slate-600 underline"
+              ng-click="vm.cancelArchive()"
+              ng-if="vm.archiveCandidateId === article.id && !vm.archivingId"
+            >
+              Cancelar
+            </button>
+          </div>
+          <div
+            ng-if="vm.publication && vm.publication.articleId === article.id"
+            class="w-full rounded-xl border p-3 text-sm sm:ml-auto sm:max-w-md"
+            ng-class="{'border-emerald-200 bg-emerald-50 text-emerald-900': vm.publication.state === 'published', 'border-rose-200 bg-rose-50 text-rose-900': vm.publication.state === 'failed' || vm.publication.state === 'error', 'border-teal-200 bg-teal-50 text-teal-900': vm.publication.state === 'pending' || vm.publication.state === 'loading'}"
+            role="status"
+            aria-live="polite"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="font-medium">
+                  {{vm.publication.state === 'published' ? 'Publicado' : vm.publication.state === 'failed' ?
+                  'Falha na indexação' : vm.publication.state === 'error' ? 'Não foi possível consultar' :
+                  'Publicação'}}
+                </p>
+                <p class="mt-1">{{vm.publication.message}}</p>
+                <p
+                  ng-if="vm.publication.refreshMessage"
+                  class="mt-1 text-xs"
+                >
+                  {{vm.publication.refreshMessage}}
+                </p>
+              </div>
+              <div class="flex shrink-0 gap-2">
+                <button
+                  ng-if="vm.publication.canRefresh"
+                  type="button"
+                  class="underline"
+                  ng-click="vm.refreshPublication()"
+                >
+                  Consultar novamente
+                </button>
+                <button
+                  type="button"
+                  class="rounded p-1"
+                  aria-label="Fechar acompanhamento"
+                  ng-click="vm.closePublication()"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          </div>
+        </li>
+      </ul>
+    </section>
+    <section
+      ng-if="vm.formOpen"
+      class="mt-6 rounded-2xl border border-teal-200 bg-white p-5 shadow-sm sm:p-7"
+      aria-labelledby="knowledge-form-title"
+    >
+      <h2
+        id="knowledge-form-title"
+        class="text-lg font-semibold"
+      >
+        {{vm.formMode === 'gap' ? 'Transformar lacuna em rascunho' : vm.selected ? 'Nova revisão' : 'Novo
+        artigo'}}
+      </h2>
+      <p
+        class="mt-1 text-sm text-slate-600"
+        ng-if="vm.selected || vm.formMode === 'gap'"
+      >
+        {{vm.formMode === 'gap' ? 'Preencha uma sugestão manual. O texto do atendimento não é copiado para o
+        artigo.' : 'A versão atual permanece vigente até a publicação.'}}
+      </p>
+      <form
+        class="mt-5 grid gap-4"
+        ng-submit="vm.save()"
+      >
+        <label class="grid gap-1 text-sm">
+          Título
+          <input
+            class="rounded-lg border border-slate-300 px-3 py-2"
+            required
+            maxlength="240"
+            ng-model="vm.form.title"
+            ng-disabled="vm.saving"
+          />
+        </label>
+        <label class="grid gap-1 text-sm">
+          Categoria
+          <input
+            class="rounded-lg border border-slate-300 px-3 py-2"
+            required
+            maxlength="80"
+            ng-model="vm.form.category"
+            ng-disabled="vm.saving"
+          />
+        </label>
+        <label class="grid gap-1 text-sm">
+          Conteúdo
+          <textarea
+            class="min-h-40 rounded-lg border border-slate-300 px-3 py-2"
+            required
+            ng-model="vm.form.content"
+            ng-disabled="vm.saving"
+          ></textarea>
+        </label>
+        <p
+          ng-if="vm.formError"
+          class="rounded-lg bg-rose-50 p-3 text-sm text-rose-800"
+          role="alert"
+        >
+          {{vm.formError}}
+        </p>
+        <div class="flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            class="rounded-lg border px-4 py-2 text-sm"
+            ng-click="vm.formOpen = false"
+            ng-disabled="vm.saving"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white"
+            ng-disabled="vm.saving"
+          >
+            {{vm.saving ? 'Salvando…' : vm.formMode === 'gap' ? 'Criar rascunho' : 'Salvar rascunho'}}
+          </button>
+        </div>
+      </form>
+    </section>
+  </main>
+</div>

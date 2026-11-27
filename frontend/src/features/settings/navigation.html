@@ -149,6 +149,17 @@
       <svg viewBox="0 0 24 24"><path d="M5 3h14v18H5zM8 8h8M8 12h8M8 16h5" /></svg>
       <span>Relatórios</span>
     </a>
+    <a
+      ng-if="$ctrl.account.user.role === 'ADMIN'"
+      href="#!/knowledge"
+      class="rail-link"
+      ng-class="{'is-active': $ctrl.isKnowledge}"
+      aria-label="Base de Conhecimento"
+      title="Base de Conhecimento"
+    >
+      <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5" /></svg>
+      <span>Base de Conhecimento</span>
+    </a>
   </div>
   <div class="rail-bottom">
     <a

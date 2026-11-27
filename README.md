@@ -113,6 +113,69 @@ sem barra final, e a conta, assinatura e telefone precisam corresponder ao canal
 
 A coleção [Postman](postman/WXN-WhatsApp.postman_collection.json) usa os contratos atuais.
 
+## Base de Conhecimento do AutoGuia
+
+Em **Configurações → Base de Conhecimento**, administradores podem criar e revisar artigos,
+acompanhar a indexação, publicar, arquivar e transformar dúvidas sem cobertura em rascunhos.
+Uma revisão em rascunho mantém a versão anterior disponível. Após a indexação, a nova versão
+passa a ser a fonte consultada. O arquivamento remove o artigo da busca.
+
+Em **Testar busca**, informe uma pergunta para ver os artigos, as versões e os trechos
+encontrados. **Gerar resposta (prévia)** é uma ação separada, disponível quando houver fontes
+e o gerador estiver configurado. A prévia não envia mensagens. Quando o RAG está habilitado
+no atendimento, a falta de fontes encaminha o caso à equipe.
+
+### Base inicial da WXN Tecnologia
+
+Foram cadastrados 10 artigos em português no PostgreSQL local usado pelo AutoGuia. Na carga
+inicial, todos estavam publicados na versão 1, com um trecho por artigo e um vetor de 768
+dimensões gerado pelo EmbeddingGemma via Ollama. A carga foi feita no banco local e não é
+executada automaticamente pelas migrations.
+
+| Contexto               | Artigos publicados                                                                                                         |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Prospecção e orçamento | Software web e mobile sob medida, sistema SaaS, contato comercial e diagnóstico                                            |
+| Avaliação técnica      | Integração com ERP e APIs, infraestrutura em nuvem, implantação de sistemas, migração de plataforma, módulos customizáveis |
+| Suporte                | Suporte especializado, consultoria, suporte e migração para TOTVS Protheus                                                 |
+
+Cada artigo registra a fonte pública e inclui perguntas para ajudar na triagem. Preço,
+prazo, condições comerciais e requisitos específicos ficam para confirmação com a equipe.
+[Site oficial da WXN Tecnologia](https://www.wxntecnologia.com.br/)
+
+### Validação da base inicial
+
+As consultas textual e híbrida do aplicativo foram executadas diretamente no banco local.
+A busca híbrida combinou texto e vetores com limiar de similaridade de `0,25`.
+
+| Cenário                                                      | Busca textual | Busca híbrida |
+| ------------------------------------------------------------ | ------------: | ------------: |
+| Consultas diretas com a fonte correta em primeiro lugar      |         10/10 |         10/10 |
+| Perguntas reformuladas com a fonte correta em primeiro lugar |           0/2 |           1/2 |
+| Perguntas sem cobertura em que a busca retornou zero fontes  |           2/2 |           0/2 |
+
+A busca híbrida encontrou o artigo certo para uma pergunta reformulada sobre migração, mas
+confundiu integração com migração em outra pergunta. Também retornou artigos para duas
+dúvidas sem cobertura, sobre preço mensal de hospedagem e venda de pneus. Esse teste mediu
+a recuperação das fontes. A geração de respostas e o envio pelo WhatsApp ficaram fora da
+validação da base inicial.
+
+### Configuração e estado da ativação
+
+As opções de RAG, embeddings, indexação e geração vêm desabilitadas por padrão no
+[`.env.example`](.env.example). Com RAG habilitado, o atendimento do AutoGuia se apresenta
+como **WXN Tecnologia**. Antes de liberar uma resposta, o gerador precisa selecionar frases
+que respondam à pergunta e que constem literalmente em um dos trechos recuperados. O
+backend envia o trecho aprovado diretamente ou encaminha o atendimento à equipe. Se o gerador estiver
+indisponível, faltar evidência ou a saída contiver texto inventado, o atendimento segue
+para a equipe.
+
+O atendimento automático com RAG segue desativado no ambiente principal. Consulte os resultados do
+teste com o gerador real no guia de avaliação antes da ativação.
+
+Consulte o [guia de avaliação](docs/autoguia-rag-evaluation.md) para reproduzir os testes em
+ambiente isolado e o [plano do RAG](docs/autoguia-rag-plan.md) para ver o desenho do fluxo
+editorial e da integração com o AutoGuia.
+
 ## Qualidade
 
 ```bash

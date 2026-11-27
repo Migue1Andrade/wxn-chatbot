@@ -1,5 +1,7 @@
 package com.wxn.chatbot.openbot;
 
+import com.wxn.chatbot.autoguia.repository.KnowledgeRetrievalRepository.SourceChunk;
+import com.wxn.chatbot.autoguia.service.KnowledgePreviewService;
 import com.wxn.chatbot.common.ApiException;
 import com.wxn.chatbot.conversation.dto.ConversationManagementDtos.Action;
 import com.wxn.chatbot.conversation.dto.ConversationManagementDtos.Assign;
@@ -18,6 +20,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -99,9 +103,62 @@ public class OpenBotSupportService {
     private final ConversationService conversations;
     private final com.wxn.chatbot.conversation.service.ConversationManagementService management;
     private final org.springframework.beans.factory.ObjectProvider<MessageService> messages;
+    private final KnowledgePreviewService knowledgePreview;
+    private final com.wxn.chatbot.autoguia.service.KnowledgeGapService knowledgeGaps;
+    private final boolean ragEnabled;
     private final RestClient client = RestClient.create();
     private final Map<String, Pending> pending = new ConcurrentHashMap<>();
     private final Map<String, String> callbackStates = new ConcurrentHashMap<>();
+
+    @Autowired
+    public OpenBotSupportService(
+        SupportProperties properties,
+        MemberRepository members,
+        ConversationService conversations,
+        org.springframework.beans.factory.ObjectProvider<MessageService> messages,
+        com.wxn.chatbot.message.repository.MessageRepository messageRepository,
+        com.wxn.chatbot.conversation.repository.ConversationActivityRepository activityRepository,
+        com.wxn.chatbot.conversation.service.ConversationManagementService management,
+        KnowledgePreviewService knowledgePreview,
+        com.wxn.chatbot.autoguia.service.KnowledgeGapService knowledgeGaps,
+        @Value("${wxn.autoguia.rag.enabled:false}") boolean ragEnabled
+    ) {
+        this.properties = properties;
+        this.members = members;
+        this.conversations = conversations;
+        this.messages = messages;
+        this.messageRepository = messageRepository;
+        this.activityRepository = activityRepository;
+        this.management = management;
+        this.knowledgePreview = knowledgePreview;
+        this.knowledgeGaps = knowledgeGaps;
+        this.ragEnabled = ragEnabled;
+    }
+
+    OpenBotSupportService(
+        SupportProperties properties,
+        MemberRepository members,
+        ConversationService conversations,
+        org.springframework.beans.factory.ObjectProvider<MessageService> messages,
+        com.wxn.chatbot.message.repository.MessageRepository messageRepository,
+        com.wxn.chatbot.conversation.repository.ConversationActivityRepository activityRepository,
+        com.wxn.chatbot.conversation.service.ConversationManagementService management,
+        KnowledgePreviewService knowledgePreview,
+        boolean ragEnabled
+    ) {
+        this(
+            properties,
+            members,
+            conversations,
+            messages,
+            messageRepository,
+            activityRepository,
+            management,
+            knowledgePreview,
+            null,
+            ragEnabled
+        );
+    }
 
     public OpenBotSupportService(
         SupportProperties properties,
@@ -112,13 +169,17 @@ public class OpenBotSupportService {
         com.wxn.chatbot.conversation.repository.ConversationActivityRepository activityRepository,
         com.wxn.chatbot.conversation.service.ConversationManagementService management
     ) {
-        this.properties = properties;
-        this.members = members;
-        this.conversations = conversations;
-        this.messages = messages;
-        this.messageRepository = messageRepository;
-        this.activityRepository = activityRepository;
-        this.management = management;
+        this(
+            properties,
+            members,
+            conversations,
+            messages,
+            messageRepository,
+            activityRepository,
+            management,
+            null,
+            false
+        );
     }
 
     public void accept(
@@ -150,15 +211,19 @@ public class OpenBotSupportService {
         if (text.isBlank() || callbackStates.containsKey(requestId)) {
             return;
         }
-        List<String> retrieved = retrieve(text);
-        boolean handoff =
-            requiresHuman(text) ||
-            retrieved.isEmpty() ||
-            (retrieved.size() == 1 &&
-                ANSWERS.get("atendimento").equals(retrieved.getFirst()) &&
-                !isGreeting(text));
-        String fallback = handoff ? "" : String.join(" ", retrieved);
+        RetrievalContext retrieval = retrievalContext(text);
+        if (retrieval.uncovered() && knowledgeGaps != null) {
+            try {
+                knowledgeGaps.recordNoSource(requestId, conversation.getId().toHexString());
+            } catch (RuntimeException persistenceFailure) {
+                LOG.warn("Não foi possível registrar a lacuna de conhecimento.");
+            }
+        }
+        boolean handoff = retrieval.handoff();
+        String fallback = retrieval.fallback();
+        boolean locallyAnswered = retrieval.rag() || retrieval.mode().equals("GREETING");
         boolean hasWebhook =
+            !locallyAnswered &&
             properties.webhookUrl() != null &&
             !properties.webhookUrl().isBlank() &&
             properties.hmacSecret() != null &&
@@ -171,29 +236,32 @@ public class OpenBotSupportService {
             conversation.getLastInboundAt(),
             deadline,
             fallback,
-            handoff
+            handoff,
+            locallyAnswered ? fallback : null
         );
-        if (pending.putIfAbsent(requestId, item) != null || !hasWebhook) {
+        if (pending.putIfAbsent(requestId, item) != null) {
             return;
         }
-        var context = retrieved.isEmpty()
+        if (callbackStates.containsKey(requestId)) {
+            pending.remove(requestId, item);
+            return;
+        }
+        if (locallyAnswered) {
+            reply(requestId, fallback, handoff, !handoff && retrieval.rag());
+            return;
+        }
+        if (!hasWebhook) {
+            return;
+        }
+        var context = retrieval.context().isEmpty()
             ? List.of("Não há resposta confirmada na FAQ. Solicite atendimento humano.")
-            : retrieved;
-        Map<String, Object> envelope = Map.of(
-            "type",
-            "wxn.support.message",
-            "data",
-            Map.of(
-                "message",
-                text,
-                "context",
-                context,
-                "history",
-                historyFor(message),
-                "requestId",
-                requestId
-            )
-        );
+            : retrieval.context();
+        Map<String, Object> data = new HashMap<>();
+        data.put("message", text);
+        data.put("context", context);
+        data.put("history", historyFor(message));
+        data.put("requestId", requestId);
+        Map<String, Object> envelope = Map.of("type", "wxn.support.message", "data", data);
         String body = new com.fasterxml.jackson.databind.ObjectMapper().valueToTree(envelope).toString();
         String timestamp = Long.toString(Instant.now().getEpochSecond());
         try {
@@ -230,7 +298,7 @@ public class OpenBotSupportService {
                             !item.fallback().isBlank()
                     )
                 ) {
-                    LOG.info("Atendimento concluído pela FAQ de contingência.");
+                    LOG.info("Atendimento pendente concluído.");
                 }
             } catch (RuntimeException failure) {
                 if (!now.isBefore(item.deadline().plus(SUPPORT_RETRY_WINDOW))) {
@@ -387,7 +455,7 @@ public class OpenBotSupportService {
         if (item == null) {
             throw new ApiException(HttpStatus.GONE, "Solicitação inexistente ou expirada");
         }
-        if (handoff) {
+        if (handoff || (item.approvedEvidence() != null && item.approvedEvidence().isBlank())) {
             conversations.withWriteLock(item.conversationId(), () -> {
                 transferToHuman(requestId, item);
                 return null;
@@ -397,7 +465,12 @@ public class OpenBotSupportService {
                 askResolution != null
                     ? askResolution
                     : !item.fallback().isBlank() && !item.fallback().equals(ANSWERS.get("atendimento"));
-            sendReply(requestId, item, reply, shouldConfirm);
+            sendReply(
+                requestId,
+                item,
+                item.approvedEvidence() == null ? reply : item.approvedEvidence(),
+                shouldConfirm
+            );
         }
         pending.remove(requestId, item);
     }
@@ -575,9 +648,11 @@ public class OpenBotSupportService {
 
     private static boolean requiresHuman(String text) {
         String normalized = normalize(text);
-        return List.of("atendente", "consultor", "ser humano", "falar com alguem")
-            .stream()
-            .anyMatch(normalized::contains);
+        return java.util.regex.Pattern.compile(
+            "\\b(?:atendentes?|consultor(?:a|es|as)?|ser humano|falar com alguem)\\b"
+        )
+            .matcher(normalized)
+            .find();
     }
 
     private List<Map<String, String>> historyFor(com.wxn.chatbot.message.document.Message current) {
@@ -612,6 +687,79 @@ public class OpenBotSupportService {
             .strip()
             .replaceAll("[!?.]+$", "")
             .matches("oi|ola|bom dia|boa tarde|boa noite");
+    }
+
+    RetrievalContext retrievalContext(String text) {
+        if (ragEnabled && requiresHuman(text)) {
+            return new RetrievalContext(List.of(), List.of(), "HUMAN_REQUEST", true, "", true, false);
+        }
+        if (ragEnabled && isGreeting(text)) {
+            String greeting = "Olá! Sou o assistente da WXN Tecnologia. Como posso ajudar?";
+            return new RetrievalContext(
+                List.of(greeting),
+                List.of(),
+                "GREETING",
+                false,
+                greeting,
+                false,
+                false
+            );
+        }
+        if (ragEnabled) {
+            try {
+                if (knowledgePreview == null) {
+                    return new RetrievalContext(List.of(), List.of(), "UNAVAILABLE", true, "", true, false);
+                }
+                var preview = knowledgePreview.preview(text, 10);
+                List<SourceChunk> sources = preview.sources();
+                String evidence = knowledgePreview.approvedEvidence(text, sources);
+                List<String> context = sources
+                    .stream()
+                    .map(source -> "Fonte: " + source.title() + "\n" + source.content())
+                    .toList();
+                return new RetrievalContext(
+                    context,
+                    sources
+                        .stream()
+                        .map(source ->
+                            Map.<String, Object>of(
+                                "articleId",
+                                source.articleId(),
+                                "versionId",
+                                source.versionId(),
+                                "versionNumber",
+                                source.versionNumber(),
+                                "title",
+                                source.title()
+                            )
+                        )
+                        .toList(),
+                    preview.mode(),
+                    evidence.isBlank(),
+                    evidence,
+                    true,
+                    sources.isEmpty() && List.of("TEXT", "HYBRID").contains(preview.mode())
+                );
+            } catch (RuntimeException unavailable) {
+                return new RetrievalContext(List.of(), List.of(), "UNAVAILABLE", true, "", true, false);
+            }
+        }
+        List<String> retrieved = retrieve(text);
+        boolean handoff =
+            requiresHuman(text) ||
+            retrieved.isEmpty() ||
+            (retrieved.size() == 1 &&
+                ANSWERS.get("atendimento").equals(retrieved.getFirst()) &&
+                !isGreeting(text));
+        return new RetrievalContext(
+            retrieved,
+            List.of(),
+            "FAQ",
+            handoff,
+            handoff ? "" : String.join(" ", retrieved),
+            false,
+            false
+        );
     }
 
     private static List<String> retrieve(String text) {
@@ -662,6 +810,17 @@ public class OpenBotSupportService {
         java.time.OffsetDateTime lastInboundAt,
         Instant deadline,
         String fallback,
-        boolean handoff
+        boolean handoff,
+        String approvedEvidence
+    ) {}
+
+    record RetrievalContext(
+        List<String> context,
+        List<Map<String, Object>> sources,
+        String mode,
+        boolean handoff,
+        String fallback,
+        boolean rag,
+        boolean uncovered
     ) {}
 }

@@ -32,6 +32,31 @@ spring:
       mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
 
 wxn:
+  autoguia:
+    rag:
+      enabled: ${AUTOGUIA_RAG_ENABLED:false}
+    embedding:
+      enabled: ${AUTOGUIA_EMBEDDING_ENABLED:false}
+      provider: ${AUTOGUIA_EMBEDDING_PROVIDER:}
+      model: ${AUTOGUIA_EMBEDDING_MODEL:}
+      dimension: ${AUTOGUIA_EMBEDDING_DIMENSION:0}
+      endpoint: ${AUTOGUIA_EMBEDDING_ENDPOINT:}
+      api-key: ${AUTOGUIA_EMBEDDING_API_KEY:}
+      connect-timeout: ${AUTOGUIA_EMBEDDING_CONNECT_TIMEOUT:PT3S}
+      timeout: ${AUTOGUIA_EMBEDDING_TIMEOUT:PT15S}
+    indexing:
+      enabled: ${AUTOGUIA_INDEXING_ENABLED:false}
+      delay: ${AUTOGUIA_INDEXING_DELAY:PT5S}
+      lease: ${AUTOGUIA_INDEXING_LEASE:PT180S}
+    retrieval:
+      minimum-similarity: ${AUTOGUIA_RETRIEVAL_MINIMUM_SIMILARITY:0.25}
+    generation:
+      enabled: ${AUTOGUIA_GENERATION_ENABLED:false}
+      endpoint: ${AUTOGUIA_GENERATION_ENDPOINT:}
+      model: ${AUTOGUIA_GENERATION_MODEL:}
+      api-key: ${AUTOGUIA_GENERATION_API_KEY:}
+      connect-timeout: ${AUTOGUIA_GENERATION_CONNECT_TIMEOUT:PT3S}
+      timeout: ${AUTOGUIA_GENERATION_TIMEOUT:PT45S}
   auth:
     password-reset:
       public-url: ${PASSWORD_RESET_PUBLIC_URL:http://localhost:4002/#!/reset-password}

@@ -32,6 +32,7 @@ angular.module('wxn.members').directive('managementNavigation', function () {
         this.isDashboard = $location.path() === '/dashboard';
         this.isTasks = $location.path() === '/tasks';
         this.isReports = $location.path() === '/reports';
+        this.isKnowledge = $location.path() === '/knowledge';
         this.isMembers = $location.path() === '/members';
         this.isChat = $location.path() === '/';
         this.chat = chatState.state;

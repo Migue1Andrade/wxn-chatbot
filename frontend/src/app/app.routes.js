@@ -98,6 +98,7 @@ angular.module('wxnDashboard').config([
       .when('/settings/channels', page('<channels-page></channels-page>', true))
       .when('/settings/sla', page('<sla-settings></sla-settings>', true))
       .when('/reports', page('<reports-page></reports-page>', true))
+      .when('/knowledge', page('<knowledge-page></knowledge-page>', true))
       .when('/tasks', page('<tasks-page></tasks-page>'))
       .when('/notifications', page('<notifications-page></notifications-page>'))
       .when('/settings', page('<settings-hub></settings-hub>'))

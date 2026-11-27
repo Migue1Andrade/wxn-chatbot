@@ -71,6 +71,7 @@ import '../features/dashboard/dashboard.directive.js';
 
 import '../features/sla/sla.directive.js';
 import '../features/reports/reports.directive.js';
+import '../features/knowledge/knowledge.directive.js';
 
 import '../features/tasks/tasks.directive.js';
 import '../features/notifications/notifications.js';

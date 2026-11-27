@@ -207,6 +207,99 @@ class OpenBotSupportServiceTest {
         }
     }
 
+    @Test
+    void sendsGroundedResponseDirectlyAndTransfersUncoveredQuestion() {
+        var properties = new SupportProperties(true, null, null, null, null, null);
+        var members = mock(MemberRepository.class);
+        var conversations = mock(ConversationService.class);
+        var repository = mock(MessageRepository.class);
+        var management = mock(com.wxn.chatbot.conversation.service.ConversationManagementService.class);
+        var sender = mock(MessageService.class);
+        @SuppressWarnings("unchecked")
+        ObjectProvider<MessageService> provider = mock(ObjectProvider.class);
+        when(provider.getObject()).thenReturn(sender);
+        var knowledge = mock(com.wxn.chatbot.autoguia.service.KnowledgePreviewService.class);
+        var service = new OpenBotSupportService(
+            properties,
+            members,
+            conversations,
+            provider,
+            repository,
+            null,
+            management,
+            knowledge,
+            true
+        );
+
+        var bot = new Member(null, "WXN Bot", MemberType.BOT, com.wxn.chatbot.common.ActiveStatus.ACTIVE);
+        org.springframework.test.util.ReflectionTestUtils.setField(bot, "id", 41L);
+        when(members.findByIdAndDeletedAtIsNull(41L)).thenReturn(Optional.of(bot));
+        var conversation = new Conversation();
+        conversation.setId(new org.bson.types.ObjectId());
+        conversation.setChannelId(7L);
+        conversation.setAssignedMemberId(41L);
+        conversation.setStatus("IN_PROGRESS");
+        String conversationId = conversation.getId().toHexString();
+        when(conversations.require(conversationId)).thenReturn(conversation);
+        when(conversations.withWriteLock(eq(conversationId), any())).thenAnswer(call ->
+            ((java.util.function.Supplier<?>) call.getArgument(1)).get()
+        );
+        var message = new Message();
+        message.setId(new org.bson.types.ObjectId());
+        message.setConversationId(conversation.getId());
+        message.setChannelId(7L);
+        when(repository.findById(message.getId())).thenReturn(Optional.of(message));
+        var channel = mock(WhatsAppChannel.class);
+        when(channel.getId()).thenReturn(7L);
+        var result = mock(NormalizedMessage.class);
+        when(result.status()).thenReturn(NormalizedMessageStatus.SIMULATED);
+        when(sender.sendAsAssignedBot(eq(conversationId), any())).thenReturn(result);
+
+        String evidence = "A WXN integra suas soluções ao ERP da empresa.";
+        var sources = List.of(
+            new com.wxn.chatbot.autoguia.repository.KnowledgeRetrievalRepository.SourceChunk(
+                1,
+                1,
+                1,
+                0,
+                "ERP",
+                evidence,
+                0.03
+            )
+        );
+        var preview = new com.wxn.chatbot.autoguia.service.KnowledgePreviewService.Preview(
+            "HYBRID",
+            sources,
+            "NOT_REQUESTED",
+            null
+        );
+        String covered = "Vocês integram com ERP?";
+        String uncovered = "Quanto custa a integração?";
+        when(knowledge.preview(anyString(), eq(10))).thenReturn(preview);
+        when(knowledge.approvedEvidence(covered, sources)).thenReturn(evidence);
+        when(knowledge.approvedEvidence(uncovered, sources)).thenReturn("");
+        for (String question : List.of(covered, uncovered)) {
+            message.setExternalMessageId(question);
+            var incoming = new NormalizedInboundMessage(
+                question,
+                "+15550000000",
+                "+15551111111",
+                MessageType.TEXT,
+                Map.of("text", question),
+                Instant.now()
+            );
+            service.accept(channel, message, incoming, 41L);
+            service.accept(channel, message, incoming, 41L);
+        }
+
+        verify(sender).sendAsAssignedBot(
+            eq(conversationId),
+            argThat(command -> command.content().startsWith(evidence))
+        );
+        verify(sender, times(1)).sendAsAssignedBot(eq(conversationId), any());
+        verify(management).handoffToQueue(eq(conversationId), any());
+    }
+
     private static String sign(String secret, String payload) throws Exception {
         Mac mac = Mac.getInstance("HmacSHA256");
         mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
