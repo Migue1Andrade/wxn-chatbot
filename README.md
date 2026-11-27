@@ -286,3 +286,20 @@ Edição, exclusão e outras mutações não misturam estado de entrega com esta
 confirmam a alteração quando disponíveis; quando uma confirmação não chega em até 120 segundos, a
 operação é marcada como `TIMEOUT` e a interface orienta verificar o WhatsApp antes de repetir. Isso
 evita loading infinito sem afirmar falsamente que a ação remota falhou ou foi concluída.
+
+## Links Importantes
+
+* [Google Sites do Projeto](https://sites.google.com/cesar.school/p3g15?usp=sharing) — Acompanhamento das entregas, protótipos e documentação visual do projeto.
+* [Declaração de Uso de IA]() — Documento detalhando as ferramentas de Inteligência Artificial utilizadas no desenvolvimento.
+
+## Equipe
+
+| Integrante | | |
+| :--- | :--- | :--- |
+| João Pedro dos Santos Sousa  - jpss2@cesar.school|
+| Luis Filipe Alves Silva Santos  - lfass@cesar.school |
+| Lucas Samuel Pereira Alves  - lspa@cesar.school|
+| Matheus Costa da Rocha  - mcr@cesar.school|
+| Miguel josé França de Andrade - mjfa@cesar.school|
+| Pedro Henrique Ramos da Silva - phrs@cesar.school|
+| Vitória Gabrielle Janeiro Duran - vgjda2@cesar.school|
